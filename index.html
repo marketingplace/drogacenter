@@ -52,10 +52,10 @@
                     <button @click="currentView = 'store'" class="hover:text-yellow-400 whitespace-nowrap">Loja (Departamentos)</button>
                     <div v-if="!customerSession" class="flex gap-4">
                         <button @click="currentView = 'customer-login'; showRegisterForm = false" class="hover:text-yellow-400 whitespace-nowrap">Entrar</button>
-                        <button @click="currentView = 'customer-login'; showRegisterForm = true" class="hover:text-yellow-400 whitespace-nowrap">Cadastro de Clientes</button>
+                        <button @click="currentView = 'customer-login'; showRegisterForm = true" class="hover:text-yellow-400 whitespace-nowrap">Cadastro</button>
                     </div>
-                    <button v-else @click="currentView = 'customer-panel'" class="text-yellow-400 italic whitespace-nowrap underline">Minha Conta ({{ customerSession.name.split(' ')[0] }})</button>
-                    <button @click="currentView = 'contact-form'" class="hover:text-yellow-400 whitespace-nowrap">Formulário de Contato</button>
+                    <button v-else @click="currentView = 'customer-panel'" class="text-yellow-400 italic underline whitespace-nowrap">Olá, {{ customerSession.name.split(' ')[0] }}</button>
+                    <button @click="currentView = 'contact-form'" class="hover:text-yellow-400 whitespace-nowrap">Contato</button>
                     <button @click="currentView = 'entregador-view'" class="ml-auto opacity-50 hover:opacity-100">Entregador</button>
                 </div>
             </div>
@@ -65,38 +65,92 @@
             
             <section v-if="currentView === 'contact-form'" class="max-w-xl mx-auto py-10">
                 <div class="bg-white p-8 rounded-3xl shadow-xl border">
-                    <h2 class="text-xl font-black text-drogacenter-blue uppercase mb-6 italic border-b-2 border-yellow-400 w-fit">Fale Conosco</h2>
+                    <h2 class="text-xl font-black text-drogacenter-blue uppercase mb-6 italic border-b-2 border-yellow-400 w-fit">Contato</h2>
                     <form @submit.prevent="alert('Mensagem enviada com sucesso!')" class="space-y-4">
-                        <input type="text" placeholder="Nome Completo" class="w-full border p-3 rounded-xl font-bold" required>
-                        <input type="email" placeholder="E-mail para resposta" class="w-full border p-3 rounded-xl font-bold" required>
-                        <textarea placeholder="Como podemos ajudar?" class="w-full border p-3 rounded-xl font-bold" rows="4" required></textarea>
-                        <button type="submit" class="w-full bg-drogacenter-blue text-white py-4 rounded-xl font-black uppercase text-xs shadow-lg">Enviar Mensagem</button>
+                        <input type="text" placeholder="Seu Nome" class="w-full border p-3 rounded-xl font-bold" required>
+                        <input type="email" placeholder="E-mail" class="w-full border p-3 rounded-xl font-bold" required>
+                        <textarea placeholder="Sua mensagem..." class="w-full border p-3 rounded-xl font-bold" rows="4" required></textarea>
+                        <button type="submit" class="w-full bg-drogacenter-blue text-white py-4 rounded-xl font-black uppercase text-xs shadow-lg">Enviar</button>
                     </form>
                 </div>
             </section>
 
             <section v-if="currentView === 'store'" class="space-y-6">
+                <div class="relative h-48 md:h-64 rounded-3xl overflow-hidden shadow-lg bg-drogacenter-blue">
+                    <transition name="fade" mode="out-in">
+                        <div :key="currentBanner" class="absolute inset-0 w-full h-full flex items-center justify-between px-10">
+                            <div class="text-white max-w-lg">
+                                <h2 class="text-2xl md:text-4xl font-black uppercase italic tracking-tighter leading-tight">{{ banners[currentBanner].title }}</h2>
+                                <p class="text-yellow-400 font-bold uppercase text-[10px] mt-2 tracking-widest">{{ banners[currentBanner].subtitle }}</p>
+                            </div>
+                            <i :data-lucide="banners[currentBanner].icon" class="hidden md:block w-24 h-24 text-white/20"></i>
+                        </div>
+                    </transition>
+                </div>
+
+                <div class="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+                    <button v-for="cat in categories" :key="cat" @click="selectedCategory = cat" 
+                        :class="selectedCategory === cat ? 'bg-drogacenter-blue text-white' : 'bg-white text-gray-400 border'"
+                        class="px-4 py-2 rounded-full text-[9px] font-black uppercase tracking-widest whitespace-nowrap transition">
+                        {{ cat }}
+                    </button>
+                </div>
+
                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                    <div v-for="(p, i) in products" :key="i" class="bg-white p-4 rounded-2xl border hover:shadow-xl transition-all group">
+                    <div v-for="(p, i) in filteredProducts" :key="i" class="bg-white p-4 rounded-2xl border hover:shadow-xl transition-all group">
                         <div class="h-44 flex items-center justify-center overflow-hidden mb-4 bg-gray-50 rounded-xl p-2 relative">
                             <img v-if="p.image" :src="p.image" class="max-h-full group-hover:scale-105 transition duration-500">
-                            <div class="absolute top-2 left-2 bg-drogacenter-blue text-white text-[7px] font-black px-2 py-0.5 rounded uppercase">{{ p.category || 'Geral' }}</div>
+                            <div class="absolute top-2 left-2 bg-drogacenter-blue text-white text-[7px] font-black px-2 py-0.5 rounded uppercase">{{ p.category }}</div>
                         </div>
                         <h3 class="font-bold text-xs uppercase truncate">{{ p.name }}</h3>
                         <p class="text-green-600 font-black text-lg">R$ {{ formatPrice(p.price) }}</p>
-                        <button @click="addToCart(p)" class="bg-drogacenter-blue text-white p-2 rounded-lg mt-2 w-full font-bold uppercase text-[10px]">Adicionar</button>
+                        <button @click="addToCart(p)" class="bg-drogacenter-blue text-white p-2 rounded-lg mt-2 w-full font-bold uppercase text-[10px] hover:bg-blue-900 transition">Comprar</button>
                     </div>
                 </div>
             </section>
 
-            </main>
+            <section v-if="currentView === 'customer-login'" class="max-w-md mx-auto py-12">
+                <div class="bg-white p-8 rounded-3xl shadow-2xl border text-center">
+                    <i data-lucide="user" class="mx-auto w-10 h-10 text-drogacenter-blue mb-4"></i>
+                    <h2 class="text-xl font-black uppercase text-drogacenter-blue mb-6">{{ showRegisterForm ? 'Cadastro' : 'Entrar' }}</h2>
+                    
+                    <div class="space-y-4">
+                        <div v-if="showRegisterForm">
+                            <input v-model="customerRegForm.name" type="text" placeholder="Nome Completo" class="w-full border p-3 rounded-xl font-bold mb-4 outline-none">
+                            <input v-model="customerRegForm.email" type="email" placeholder="E-mail" class="w-full border p-3 rounded-xl font-bold mb-4 outline-none">
+                            <button @click="handleCustomerRegister" class="w-full bg-green-600 text-white py-3 rounded-xl font-black uppercase text-xs">Criar Minha Conta</button>
+                        </div>
+                        <div v-else>
+                            <input v-model="customerLoginForm.email" type="email" placeholder="Seu E-mail" class="w-full border p-3 rounded-xl font-bold mb-4 outline-none">
+                            <button @click="handleCustomerLogin" class="w-full bg-drogacenter-blue text-white py-3 rounded-xl font-black uppercase text-xs">Acessar</button>
+                        </div>
+                        <button @click="showRegisterForm = !showRegisterForm" class="text-[10px] uppercase font-bold text-gray-400 underline">
+                            {{ showRegisterForm ? 'Já tenho conta' : 'Não tenho cadastro' }}
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <section v-if="currentView === 'entregador-view'" class="max-w-2xl mx-auto space-y-6">
+                <div class="bg-drogacenter-blue text-white p-6 rounded-3xl shadow-xl border-b-8 border-yellow-400 flex justify-between items-center">
+                    <div><h2 class="text-2xl font-black uppercase italic tracking-tighter">Entregas Cloud</h2><p class="text-[10px] font-bold text-yellow-400 uppercase">Status em tempo real</p></div>
+                    <i data-lucide="truck" class="w-10 h-10"></i>
+                </div>
+                <div v-if="activeDeliveries.length > 0" class="space-y-4">
+                    <div v-for="order in activeDeliveries" :key="order.id" class="bg-white p-6 rounded-3xl border-l-8 border-blue-500 shadow-md">
+                        <h4 class="font-black uppercase text-blue-900">{{ order.customer }}</h4>
+                        <p class="text-xs font-bold text-gray-500 mt-1 italic">{{ order.address }}</p>
+                        <button @click="updateOrderStatus(order.id, 'Entregue')" class="w-full mt-4 bg-green-600 text-white py-3 rounded-2xl font-black uppercase text-[10px] shadow-lg">Marcar como Entregue</button>
+                    </div>
+                </div>
+                <div v-else class="text-center py-20 text-gray-400 font-bold uppercase text-[10px]">Nenhum pedido em rota.</div>
+            </section>
+
+        </main>
     </div>
 
     <script>
         const { createApp } = Vue;
-
-        // --- CONFIGURAÇÃO OBRIGATÓRIA DO BANCO DE DADOS (SUPABASE) ---
-        // Você deve criar sua conta gratuita em supabase.com para os dados ficarem salvos
         const SUPABASE_URL = 'https://bcpcizjvzmcvfhyqheab.supabase.co'; 
         const SUPABASE_KEY = 'sb_publishable_RDTHI_WsNRZ9XO5mwcaiyg_68cIbQPD';
         const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -104,45 +158,62 @@
         createApp({
             data() {
                 return {
-                    loading: false, currentView: 'store', adminSubView: 'pedidos', showCart: false,
-                    showRegisterForm: false, searchQuery: '', selectedCategory: 'Tudo', adminSession: null, customerSession: null, currentBanner: 0,
-                    banners: [{title:"Farmácia Cloud", subtitle:"Dados em tempo real", icon:"pill"}],
-                    loginForm: { user: '', pass: '' }, customerLoginForm: { email: '', pass: '' }, customerRegForm: { name: '', email: '', cpf: '', pass: '' }, orderForm: { name: '', address: '' },
-                    // DB Arrays (Agora sincronizados via Nuvem)
-                    products: [], orders: [], allCustomers: [], cart: []
+                    loading: false, currentView: 'store', showCart: false, showRegisterForm: false,
+                    adminSession: null, customerSession: null, currentBanner: 0, selectedCategory: 'Tudo',
+                    categories: ['Tudo', 'Medicamentos', 'Beleza', 'Infantil', 'Higiene'],
+                    banners: [
+                        { title: "Saúde em Primeiro Lugar", subtitle: "Genéricos com até 50% de desconto", icon: "pill" },
+                        { title: "Ofertas de Verão", subtitle: "Protetor solar e hidratação em dobro", icon: "sun" },
+                        { title: "Beleza e Bem-Estar", subtitle: "Maquiagens importadas em oferta", icon: "sparkles" }
+                    ],
+                    customerRegForm: { name: '', email: '' }, customerLoginForm: { email: '' },
+                    products: [], orders: [], cart: []
                 }
             },
             computed: {
                 cartCount() { return this.cart.reduce((t, i) => t + i.qty, 0); },
-                cartTotal() { return this.cart.reduce((t, i) => t + (i.price * i.qty), 0); }
+                filteredProducts() {
+                    if (this.selectedCategory === 'Tudo') return this.products;
+                    return this.products.filter(p => p.category === this.selectedCategory);
+                },
+                activeDeliveries() { return this.orders.filter(o => o.status === 'Em Rota'); }
             },
             methods: {
-                // REGRA 7: Correção identificada - O banco local localStorage agora é secundário.
                 async fetchData() {
                     this.loading = true;
                     try {
                         const { data: p } = await _supabase.from('products').select('*').order('created_at', { ascending: false });
+                        const { data: o } = await _supabase.from('orders').select('*').order('created_at', { ascending: false });
                         if(p) this.products = p;
-                    } catch (e) { console.error("Erro na nuvem:", e); }
+                        if(o) this.orders = o;
+                    } catch (e) { console.error(e); }
                     this.loading = false;
                 },
                 async handleCustomerRegister() {
-                    if(!this.customerRegForm.email) return;
-                    this.loading = true;
                     const { error } = await _supabase.from('customers').insert([this.customerRegForm]);
-                    if(!error) { alert("Cadastro Realizado na Nuvem!"); this.showRegisterForm = false; }
-                    this.loading = false;
+                    if(!error) { alert("Cadastro realizado!"); this.showRegisterForm = false; }
+                },
+                async handleCustomerLogin() {
+                    const { data } = await _supabase.from('customers').select('*').eq('email', this.customerLoginForm.email).single();
+                    if(data) { this.customerSession = data; this.currentView = 'store'; } else alert("Erro!");
+                },
+                async updateOrderStatus(id, status) {
+                    await _supabase.from('orders').update({ status }).eq('id', id);
+                    this.fetchData();
                 },
                 formatPrice(v) { return parseFloat(v || 0).toFixed(2).replace('.', ','); },
-                addToCart(p) { const it = this.cart.find(i => i.name === p.name); if(it) it.qty++; else this.cart.push({...p, qty: 1}); this.showCart = true; }
+                addToCart(p) {
+                    const existing = this.cart.find(i => i.id === p.id);
+                    if(existing) existing.qty++;
+                    else this.cart.push({...p, qty: 1});
+                    this.showCart = true;
+                }
             },
             mounted() { 
-                lucide.createIcons(); 
-                this.fetchData(); // Sincroniza dados ao iniciar
-                setInterval(() => { this.currentBanner = (this.currentBanner + 1) % this.banners.length; }, 5000); 
+                this.fetchData();
+                setInterval(() => { this.currentBanner = (this.currentBanner + 1) % this.banners.length; }, 5000);
             }
         }).mount('#app');
     </script>
 </body>
 </html>
-
