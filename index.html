@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Drogacenter Cloud | Sistema Profissional</title>
+    <title>Drogacenter Cloud | Gestão e Vendas Profissionais</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
@@ -16,12 +16,16 @@
         .bg-drogacenter-yellow { background-color: #facc15; }
         .text-drogacenter-blue { color: #1e3a8a; }
         .border-drogacenter-yellow { border-color: #facc15; }
+        .fade-enter-active, .fade-leave-active { transition: opacity 0.5s; }
+        .fade-enter-from, .fade-leave-to { opacity: 0; }
+        .cart-enter-active, .cart-leave-active { transition: transform 0.3s ease; }
+        .cart-enter-from, .cart-leave-to { transform: translateX(100%); }
     </style>
 </head>
 <body class="text-gray-900">
     <div id="app" v-cloak>
         <div v-if="loading" class="fixed top-0 left-0 w-full bg-blue-600 text-white text-[10px] text-center py-1 z-[100] font-bold uppercase animate-pulse">
-            Sincronizando com a Nuvem...
+            Sincronizando com o Banco de Dados Cloud...
         </div>
 
         <header class="bg-drogacenter-blue text-white shadow-lg sticky top-0 z-50 border-b-4 border-drogacenter-yellow">
@@ -35,13 +39,43 @@
                     <button v-if="!adminSession" @click="currentView = 'admin-login'">Admin</button>
                     <button v-else @click="currentView = 'admin-panel'" class="text-yellow-400 font-black italic">Gestão</button>
                     <button @click="currentView = 'entregador-view'">Entregador</button>
-                    <button @click="showCart = true" class="relative bg-drogacenter-yellow p-2 rounded-full text-blue-900">
+                    <button @click="showCart = true" class="relative bg-drogacenter-yellow p-2 rounded-full text-blue-900 shadow-md transition hover:scale-110">
                         <i data-lucide="shopping-cart" class="w-5 h-5"></i>
-                        <span class="absolute -top-1 -right-1 bg-red-600 text-white text-[8px] w-5 h-5 flex items-center justify-center rounded-full">{{ cart.length }}</span>
+                        <span class="absolute -top-1 -right-1 bg-red-600 text-white text-[8px] w-5 h-5 flex items-center justify-center rounded-full border-2 border-white">{{ cart.length }}</span>
                     </button>
                 </nav>
             </div>
         </header>
+
+        <transition name="cart">
+            <div v-if="showCart" class="fixed inset-0 z-[100] flex justify-end">
+                <div class="absolute inset-0 bg-black/40 backdrop-blur-sm" @click="showCart = false"></div>
+                <div class="relative w-full max-w-md bg-white h-full shadow-2xl flex flex-col">
+                    <div class="p-6 bg-drogacenter-blue text-white flex justify-between items-center">
+                        <h2 class="font-black uppercase tracking-tighter italic">Seu Carrinho</h2>
+                        <button @click="showCart = false" class="hover:rotate-90 transition"><i data-lucide="x"></i></button>
+                    </div>
+                    <div class="flex-1 overflow-y-auto p-6 space-y-4">
+                        <div v-if="cart.length === 0" class="text-center py-20 text-gray-400 uppercase text-xs font-bold">Carrinho Vazio</div>
+                        <div v-for="(item, idx) in cart" :key="idx" class="flex gap-4 border-b pb-4 items-center">
+                            <img :src="item.image" class="w-16 h-16 object-contain border rounded-lg bg-white">
+                            <div class="flex-1">
+                                <h4 class="font-bold text-[10px] uppercase truncate w-32">{{ item.name }}</h4>
+                                <p class="text-green-600 font-black text-sm">R$ {{ formatPrice(item.price) }}</p>
+                            </div>
+                            <button @click="removeFromCart(idx)" class="text-red-400"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                        </div>
+                    </div>
+                    <div v-if="cart.length > 0" class="p-6 border-t bg-gray-50">
+                        <div class="flex justify-between items-center mb-6">
+                            <span class="font-bold text-gray-400 text-xs tracking-widest uppercase">Total</span>
+                            <span class="text-2xl font-black text-drogacenter-blue">R$ {{ formatPrice(cartTotal) }}</span>
+                        </div>
+                        <button class="w-full bg-drogacenter-blue text-white py-4 rounded-xl font-black uppercase text-xs tracking-widest shadow-xl">Finalizar Pedido</button>
+                    </div>
+                </div>
+            </div>
+        </transition>
 
         <main class="container mx-auto px-4 py-8">
             <section v-if="currentView === 'store'" class="space-y-6">
@@ -54,61 +88,82 @@
                     <div v-for="p in filteredProducts" :key="p.id" class="bg-white p-4 rounded-2xl border hover:shadow-xl transition-all group">
                         <div class="h-44 flex items-center justify-center overflow-hidden mb-4 bg-gray-50 rounded-xl relative">
                             <img v-if="p.image" :src="p.image" class="max-h-full transition duration-500 group-hover:scale-110">
-                            <i v-else data-lucide="package" class="w-12 h-12 text-gray-200"></i>
-                            <span class="absolute top-2 left-2 bg-blue-900 text-white text-[7px] px-2 py-0.5 rounded font-black uppercase">{{ p.category }}</span>
+                            <span class="absolute top-2 left-2 bg-blue-900 text-white text-[7px] px-2 py-0.5 rounded font-black uppercase tracking-widest">{{ p.category }}</span>
                         </div>
                         <h3 class="font-bold text-xs uppercase truncate">{{ p.name }}</h3>
                         <p class="text-green-600 font-black text-lg">R$ {{ formatPrice(p.price) }}</p>
-                        <button @click="addToCart(p)" class="w-full mt-4 bg-drogacenter-blue text-white py-2 rounded-lg font-bold text-[10px] uppercase">Comprar</button>
+                        <button @click="addToCart(p)" class="w-full mt-4 bg-drogacenter-blue text-white py-2 rounded-lg font-bold text-[10px] uppercase shadow-sm hover:bg-blue-900 transition">Comprar Agora</button>
                     </div>
-                </div>
-                <div v-if="products.length === 0 && !loading" class="text-center py-20 bg-white rounded-3xl border-2 border-dashed">
-                    <p class="text-gray-400 font-bold uppercase text-[10px]">Nenhum produto cadastrado na nuvem.</p>
                 </div>
             </section>
 
             <section v-if="currentView === 'admin-login'" class="max-w-md mx-auto py-20">
                 <div class="bg-white p-8 rounded-3xl shadow-2xl border text-center">
                     <i data-lucide="lock" class="mx-auto w-10 h-10 text-drogacenter-blue mb-4"></i>
-                    <h2 class="text-xl font-black uppercase text-drogacenter-blue mb-6">Login Cloud</h2>
+                    <h2 class="text-xl font-black uppercase mb-6 tracking-tighter">Login Cloud</h2>
                     <input v-model="loginForm.user" type="text" placeholder="Usuário" class="w-full border p-3 rounded-xl mb-4 font-bold outline-none">
                     <input v-model="loginForm.pass" type="password" placeholder="Senha" class="w-full border p-3 rounded-xl mb-4 font-bold outline-none">
-                    <button @click="handleAdminLogin" class="w-full bg-drogacenter-blue text-white py-3 rounded-xl font-black uppercase text-xs">Entrar no Gestor</button>
+                    <button @click="handleAdminLogin" class="w-full bg-drogacenter-blue text-white py-3 rounded-xl font-black uppercase text-xs shadow-lg">Acessar Painel</button>
                 </div>
             </section>
 
             <section v-if="currentView === 'admin-panel' && adminSession" class="space-y-8">
                 <div class="flex flex-col md:flex-row justify-between items-center bg-white p-6 rounded-3xl shadow-sm border border-l-8 border-green-500 gap-4">
-                    <h2 class="text-lg font-black text-drogacenter-blue uppercase italic">Painel de Controle</h2>
+                    <h2 class="text-lg font-black text-drogacenter-blue uppercase italic">Gestão Cloud Ativa</h2>
                     <div class="flex flex-wrap justify-center gap-2">
-                        <button @click="adminSubView = 'pedidos'" :class="adminSubView === 'pedidos' ? 'bg-drogacenter-blue text-white' : 'bg-gray-100'" class="px-4 py-2 rounded-xl text-[9px] font-bold uppercase">Pedidos</button>
                         <button @click="adminSubView = 'produtos'" :class="adminSubView === 'produtos' ? 'bg-drogacenter-blue text-white' : 'bg-gray-100'" class="px-4 py-2 rounded-xl text-[9px] font-bold uppercase">Estoque</button>
+                        <button @click="adminSubView = 'equipe'" :class="adminSubView === 'equipe' ? 'bg-drogacenter-blue text-white' : 'bg-gray-100'" class="px-4 py-2 rounded-xl text-[9px] font-bold uppercase">Equipe</button>
                         <button @click="logoutAdmin" class="bg-red-500 text-white px-4 py-2 rounded-xl text-[9px] font-bold uppercase">Sair</button>
+                    </div>
+                </div>
+
+                <div v-if="adminSubView === 'equipe'" class="space-y-6">
+                    <div class="bg-white p-6 rounded-3xl shadow-xl border border-blue-50">
+                        <h3 class="font-black uppercase text-xs mb-4 text-blue-600 italic">{{ isEditingUser ? 'Editar Colaborador' : 'Novo Colaborador Cloud' }}</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <input v-model="userForm.username" type="text" placeholder="Login" class="border p-3 rounded-xl font-bold outline-none">
+                            <input v-model="userForm.password" type="text" placeholder="Senha" class="border p-3 rounded-xl font-bold outline-none">
+                            <button @click="saveUserCloud" class="bg-drogacenter-yellow text-blue-900 font-black uppercase text-[10px] rounded-xl shadow-md transition hover:scale-105">
+                                {{ isEditingUser ? 'Confirmar Alteração' : 'Cadastrar na Nuvem' }}
+                            </button>
+                        </div>
+                    </div>
+                    <div class="bg-white rounded-3xl border shadow-sm overflow-hidden">
+                        <table class="w-full text-left font-bold text-[10px] uppercase">
+                            <thead class="bg-gray-50 border-b"><tr><th class="p-4">Login</th><th class="p-4">Nível</th><th class="p-4 text-right">Ação</th></tr></thead>
+                            <tbody>
+                                <tr v-for="u in adminUsers" :key="u.id" class="border-b hover:bg-blue-50 transition">
+                                    <td class="p-4">{{ u.username }}</td>
+                                    <td class="p-4"><span class="bg-blue-100 text-blue-700 px-2 py-1 rounded text-[8px]">{{ u.role }}</span></td>
+                                    <td class="p-4 text-right space-x-3">
+                                        <button @click="editUserCloud(u)" class="text-blue-600 underline">Editar</button>
+                                        <button v-if="u.username !== 'admin'" @click="deleteUserCloud(u.id)" class="text-red-500 underline">Remover</button>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
                     </div>
                 </div>
 
                 <div v-if="adminSubView === 'produtos'" class="space-y-6">
                     <div class="bg-white p-6 rounded-3xl shadow-xl border">
-                        <h3 class="font-black uppercase text-xs mb-4 text-blue-600">Novo Medicamento na Nuvem</h3>
+                        <h3 class="font-black uppercase text-xs mb-4 text-blue-600 italic">Novo Medicamento na Nuvem</h3>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <input v-model="productForm.name" placeholder="Nome" class="border p-3 rounded-xl font-bold">
-                            <input v-model="productForm.price" type="number" placeholder="Preço (Ex: 25.50)" class="border p-3 rounded-xl font-bold">
+                            <input v-model="productForm.price" type="number" placeholder="Preço" class="border p-3 rounded-xl font-bold">
                             <input v-model="productForm.category" placeholder="Categoria" class="border p-3 rounded-xl font-bold">
                             <input type="file" @change="handleImageUpload" class="text-[10px] p-2 bg-gray-50 border-dashed border-2 rounded-xl">
-                            <button @click="saveProductCloud" class="md:col-span-2 bg-drogacenter-blue text-white py-4 rounded-xl font-black uppercase text-xs">Salvar Globalmente</button>
+                            <button @click="saveProductCloud" class="md:col-span-2 bg-drogacenter-blue text-white py-4 rounded-xl font-black uppercase text-xs shadow-lg">Publicar Globalmente</button>
                         </div>
                     </div>
                     <div class="bg-white rounded-3xl border shadow-sm overflow-hidden">
                         <table class="w-full text-left font-bold text-[10px] uppercase">
-                            <thead class="bg-gray-100 border-b"><tr><th class="p-4">Item</th><th class="p-4">Preço</th><th class="p-4 text-right">Ação</th></tr></thead>
+                            <thead class="bg-gray-50 border-b"><tr><th class="p-4">Item</th><th class="p-4">Preço</th><th class="p-4 text-right">Ação</th></tr></thead>
                             <tbody>
                                 <tr v-for="p in products" :key="p.id" class="border-b">
-                                    <td class="p-4 flex items-center gap-3">
-                                        <img :src="p.image" class="w-8 h-8 object-contain border rounded">
-                                        <span>{{ p.name }}</span>
-                                    </td>
-                                    <td class="p-4 text-green-600">R$ {{ formatPrice(p.price) }}</td>
-                                    <td class="p-4 text-right"><button @click="deleteProductCloud(p.id)" class="text-red-500">Excluir</button></td>
+                                    <td class="p-4 flex items-center gap-3"><img :src="p.image" class="w-8 h-8 object-contain border rounded"><span>{{ p.name }}</span></td>
+                                    <td class="p-4 text-green-600 font-black italic">R$ {{ formatPrice(p.price) }}</td>
+                                    <td class="p-4 text-right"><button @click="deleteProductCloud(p.id)" class="text-red-500 underline">Excluir</button></td>
                                 </tr>
                             </tbody>
                         </table>
@@ -122,43 +177,92 @@
         const { createApp } = Vue;
 
         // --- CONFIGURAÇÃO SUPABASE ---
-        const SUPABASE_URL = 'https://bcpcizjvzmcvfhyqheab.supabase.co'; 
-        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJjcGNpemp2em1jdmZoeXFoZWFiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk2NDU0MTIsImV4cCI6MjA4NTIyMTQxMn0.NUBwtE6es1LI4-lxgh80X-w40osDt7k-g51bIE5wKlI';
+        const SUPABASE_URL = 'SUA_URL_AQUI'; 
+        const SUPABASE_KEY = 'SUA_KEY_ANON_AQUI';
         const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
         createApp({
             data() {
                 return {
-                    loading: false, currentView: 'store', adminSubView: 'pedidos',
+                    loading: false, currentView: 'store', adminSubView: 'produtos', showCart: false,
                     searchQuery: '', adminSession: null, loginForm: { user: '', pass: '' },
                     productForm: { name: '', price: 0, category: '', image: '' },
-                    products: [], orders: [], cart: []
+                    userForm: { id: null, username: '', password: '', role: 'secundário' },
+                    isEditingUser: false,
+                    products: [], adminUsers: [], cart: []
                 }
             },
             computed: {
+                cartTotal() { return this.cart.reduce((t, i) => t + i.price, 0); },
                 filteredProducts() {
                     return this.products.filter(p => p.name.toLowerCase().includes(this.searchQuery.toLowerCase()));
                 }
             },
             methods: {
+                // MÉTODOS CLOUD (SUPABASE)
                 async fetchData() {
                     this.loading = true;
                     try {
                         const { data: p } = await _supabase.from('products').select('*').order('created_at', { ascending: false });
+                        const { data: u } = await _supabase.from('admin_users').select('*').order('created_at', { ascending: false });
                         this.products = p || [];
+                        this.adminUsers = u || [];
                     } catch (e) { console.error(e); }
                     this.loading = false;
                 },
-                async handleAdminLogin() {
-                    const { data } = await _supabase.from('admin_users').select('*').eq('username', this.loginForm.user).eq('password', this.loginForm.pass).single();
-                    if(data) { this.adminSession = data; this.currentView = 'admin-panel'; } else { alert("Acesso negado!"); }
+
+                // GESTÃO DE USUÁRIOS CLOUD
+                async saveUserCloud() {
+                    if(!this.userForm.username || !this.userForm.password) return alert("Preencha tudo!");
+                    const payload = { username: this.userForm.username, password: this.userForm.password, role: this.userForm.role };
+                    
+                    let res;
+                    if(this.isEditingUser) {
+                        res = await _supabase.from('admin_users').update(payload).eq('id', this.userForm.id);
+                    } else {
+                        res = await _supabase.from('admin_users').insert([payload]);
+                    }
+
+                    if(!res.error) {
+                        alert("Equipe atualizada na nuvem!");
+                        this.resetUserForm();
+                        this.fetchData();
+                    }
                 },
+                async deleteUserCloud(id) {
+                    if(confirm("Remover acesso permanente?")) {
+                        await _supabase.from('admin_users').delete().eq('id', id);
+                        this.fetchData();
+                    }
+                },
+                editUserCloud(u) {
+                    this.isEditingUser = true;
+                    this.userForm = { ...u };
+                },
+                resetUserForm() {
+                    this.userForm = { id: null, username: '', password: '', role: 'secundário' };
+                    this.isEditingUser = false;
+                },
+
+                // GESTÃO DE PRODUTOS
                 async saveProductCloud() {
+                    if(!this.productForm.name) return alert("Preencha o nome!");
                     const { error } = await _supabase.from('products').insert([this.productForm]);
-                    if(!error) { alert("Sucesso!"); this.productForm = { name:'', price:0, category:'', image:'' }; this.fetchData(); }
+                    if(!error) { alert("Publicado!"); this.productForm = { name:'', price:0, category:'', image:'' }; this.fetchData(); }
                 },
                 async deleteProductCloud(id) {
                     if(confirm("Excluir?")) { await _supabase.from('products').delete().eq('id', id); this.fetchData(); }
+                },
+
+                // UI & CARRINHO
+                addToCart(p) {
+                    this.cart.push(p);
+                    this.showCart = true; // Abre o carrinho automaticamente ao comprar
+                },
+                removeFromCart(idx) { this.cart.splice(idx, 1); },
+                async handleAdminLogin() {
+                    const { data } = await _supabase.from('admin_users').select('*').eq('username', this.loginForm.user).eq('password', this.loginForm.pass).single();
+                    if(data) { this.adminSession = data; this.currentView = 'admin-panel'; } else { alert("Acesso negado!"); }
                 },
                 handleImageUpload(e) {
                     const file = e.target.files[0];
@@ -169,7 +273,8 @@
                 formatPrice(v) { return parseFloat(v || 0).toFixed(2).replace('.', ','); },
                 logoutAdmin() { this.adminSession = null; this.currentView = 'store'; }
             },
-            mounted() { lucide.createIcons(); this.fetchData(); }
+            mounted() { lucide.createIcons(); this.fetchData(); },
+            updated() { lucide.createIcons(); }
         }).mount('#app');
     </script>
 </body>
