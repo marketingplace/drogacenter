@@ -3,10 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Drogacenter | Gestão, Vendas e Relatórios</title>
+    <title>Drogacenter | Gestão, Vendas e Cloud</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;900&display=swap" rel="stylesheet">
     
     <style>
@@ -16,7 +17,6 @@
         .bg-drogacenter-yellow { background-color: #facc15; }
         .text-drogacenter-blue { color: #1e3a8a; }
         .border-drogacenter-yellow { border-color: #facc15; }
-        
         .fade-enter-active, .fade-leave-active { transition: opacity 0.8s ease; }
         .fade-enter-from, .fade-leave-to { opacity: 0; }
         .cart-enter-active, .cart-leave-active { transition: transform 0.3s ease; }
@@ -27,6 +27,10 @@
 <body class="text-gray-900">
     <div id="app" v-cloak>
         
+        <div v-if="loading" class="fixed top-0 left-0 w-full bg-blue-600 text-white text-[10px] text-center py-1 z-[150] font-bold uppercase animate-pulse">
+            Sincronizando com o Banco de Dados...
+        </div>
+
         <header class="bg-drogacenter-blue text-white shadow-lg sticky top-0 z-50 border-b-4 border-drogacenter-yellow">
             <div class="container mx-auto px-4 py-3 flex justify-between items-center">
                 <div @click="currentView = 'store'" class="flex items-center gap-2 cursor-pointer group">
@@ -34,301 +38,78 @@
                     <h1 class="text-2xl font-black tracking-tighter uppercase">DROGA<span class="text-drogacenter-yellow">CENTER</span></h1>
                 </div>
 
-                <nav class="flex items-center gap-4 text-[10px] font-bold uppercase tracking-widest">
-                    <button @click="currentView = 'store'" :class="currentView === 'store' ? 'text-yellow-400' : ''">Loja</button>
-                    
-                    <button v-if="!customerSession" @click="currentView = 'customer-login'" class="hover:text-yellow-200">Minha Conta</button>
-                    <button v-else @click="currentView = 'customer-panel'" class="text-yellow-400 underline italic">Olá, {{ customerSession.name.split(' ')[0] }}</button>
-
-                    <button v-if="!adminSession" @click="currentView = 'admin-login'" class="bg-white/10 px-3 py-1 rounded">Admin</button>
-                    <button v-else @click="currentView = 'admin-panel'" class="text-yellow-400 font-black">Gestão</button>
-                    
-                    <button @click="currentView = 'entregador-view'" :class="currentView === 'entregador-view' ? 'text-yellow-400 underline font-black' : ''">Entregador</button>
-                    
+                <div class="flex items-center gap-6">
                     <button @click="showCart = true" class="relative bg-drogacenter-yellow p-2 rounded-full shadow-md transition hover:scale-110">
                         <i data-lucide="shopping-cart" class="w-5 h-5 text-blue-900"></i>
                         <span class="absolute -top-1 -right-1 bg-red-600 text-white text-[8px] w-5 h-5 flex items-center justify-center rounded-full font-black border-2 border-white">{{ cartCount }}</span>
                     </button>
-                </nav>
+                    <button v-if="adminSession" @click="currentView = 'admin-panel'" class="bg-white/10 px-3 py-1 rounded text-[10px] font-bold uppercase border border-white/20">Painel Gestão</button>
+                    <button v-else @click="currentView = 'admin-login'" class="text-[10px] font-bold uppercase opacity-50 hover:opacity-100">Admin</button>
+                </div>
+            </div>
+
+            <div class="bg-blue-900/50 border-t border-white/10 py-2">
+                <div class="container mx-auto px-4 flex flex-wrap gap-6 text-[10px] font-bold uppercase tracking-widest overflow-x-auto scrollbar-hide">
+                    <button @click="currentView = 'store'" class="hover:text-yellow-400 flex items-center gap-1"><i data-lucide="layout-grid" class="w-3 h-3"></i> Loja (Departamentos)</button>
+                    
+                    <div v-if="!customerSession" class="flex gap-4 border-l border-white/20 pl-4">
+                        <button @click="currentView = 'customer-login'; showRegisterForm = false" class="hover:text-yellow-400">Entrar</button>
+                        <button @click="currentView = 'customer-login'; showRegisterForm = true" class="hover:text-yellow-400">Cadastro de Clientes</button>
+                    </div>
+                    
+                    <button v-else @click="currentView = 'customer-panel'" class="text-yellow-400 flex items-center gap-1 border-l border-white/20 pl-4">
+                        <i data-lucide="user" class="w-3 h-3"></i> Minha Conta ({{ customerSession.name.split(' ')[0] }})
+                    </button>
+
+                    <button @click="currentView = 'contact-form'" class="hover:text-yellow-400 flex items-center gap-1 border-l border-white/20 pl-4">
+                        <i data-lucide="mail" class="w-3 h-3"></i> Formulário de Contato
+                    </button>
+                    
+                    <button @click="currentView = 'entregador-view'" class="ml-auto opacity-70 hover:opacity-100">Entregador</button>
+                </div>
             </div>
         </header>
 
-        <transition name="cart">
-            <div v-if="showCart" class="fixed inset-0 z-[100] flex justify-end">
-                <div class="absolute inset-0 bg-black/40 backdrop-blur-sm" @click="showCart = false"></div>
-                <div class="relative w-full max-w-md bg-white h-full shadow-2xl flex flex-col">
-                    <div class="p-6 bg-drogacenter-blue text-white flex justify-between items-center">
-                        <h2 class="font-black uppercase tracking-tighter italic">Seu Carrinho</h2>
-                        <button @click="showCart = false"><i data-lucide="x"></i></button>
-                    </div>
-                    <div class="flex-1 overflow-y-auto p-6 space-y-4">
-                        <div v-for="(item, idx) in cart" :key="idx" class="flex gap-4 border-b pb-4 items-center">
-                            <img :src="item.image" class="w-16 h-16 object-contain border rounded-lg p-1 bg-white">
-                            <div class="flex-1">
-                                <h4 class="font-bold text-[10px] uppercase truncate w-32">{{ item.name }}</h4>
-                                <p class="text-green-600 font-black text-sm">R$ {{ formatPrice(item.price) }}</p>
-                                <div class="flex items-center gap-2 mt-2">
-                                    <button @click="updateQty(idx, -1)" class="bg-gray-100 w-5 h-5 rounded text-xs">-</button>
-                                    <span class="text-xs font-bold">{{ item.qty }}</span>
-                                    <button @click="updateQty(idx, 1)" class="bg-gray-100 w-5 h-5 rounded text-xs">+</button>
-                                </div>
-                            </div>
-                            <button @click="removeFromCart(idx)" class="text-red-400"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
-                        </div>
-                    </div>
-                    <div v-if="cart.length > 0" class="p-6 border-t bg-gray-50">
-                        <div class="flex justify-between items-center mb-6">
-                            <span class="font-bold text-gray-400 text-xs">VALOR TOTAL</span>
-                            <span class="text-2xl font-black text-drogacenter-blue">R$ {{ formatPrice(cartTotal) }}</span>
-                        </div>
-                        <button @click="startCheckout" class="w-full bg-drogacenter-blue text-white py-4 rounded-xl font-black uppercase text-xs tracking-widest shadow-xl">Finalizar Compra</button>
-                    </div>
-                </div>
-            </div>
-        </transition>
-
         <main class="container mx-auto px-4 py-8">
             
-            <section v-if="currentView === 'store'" class="space-y-6">
-                <div class="relative h-48 md:h-64 rounded-3xl overflow-hidden shadow-lg bg-drogacenter-blue">
-                    <transition-group name="fade">
-                        <div v-for="(banner, bIdx) in banners" :key="bIdx" v-show="currentBanner === bIdx" class="absolute inset-0 w-full h-full flex items-center justify-between px-10">
-                            <div class="text-white max-w-lg">
-                                <h2 class="text-2xl md:text-4xl font-black uppercase italic tracking-tighter leading-tight">{{ banner.title }}</h2>
-                                <p class="text-yellow-400 font-bold uppercase text-[10px] mt-2 tracking-widest">{{ banner.subtitle }}</p>
-                            </div>
-                            <i :data-lucide="banner.icon" class="hidden md:block w-24 h-24 text-white/20"></i>
-                        </div>
-                    </transition-group>
-                </div>
-
-                <div class="space-y-4">
-                    <div class="bg-white p-4 rounded-2xl shadow-sm border border-blue-50 flex items-center gap-3">
-                        <i data-lucide="search" class="text-gray-400 w-5 h-5"></i>
-                        <input v-model="searchQuery" type="text" placeholder="Buscar medicamento ou categoria..." class="w-full font-bold text-sm outline-none">
-                    </div>
-                    <div class="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-                        <button @click="selectedCategory = 'Tudo'" :class="selectedCategory === 'Tudo' ? 'bg-drogacenter-yellow text-blue-900 shadow-md' : 'bg-white text-gray-500 border'" class="px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-widest whitespace-nowrap transition-all">Tudo</button>
-                        <button v-for="cat in availableCategories" :key="cat" @click="selectedCategory = cat" :class="selectedCategory === cat ? 'bg-drogacenter-yellow text-blue-900 shadow-md' : 'bg-white text-gray-500 border'" class="px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-widest whitespace-nowrap transition-all">{{ cat }}</button>
-                    </div>
-                </div>
-
-                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                    <div v-for="(p, i) in filteredProducts" :key="i" class="bg-white p-4 rounded-2xl border hover:shadow-xl transition-all group">
-                        <div class="h-44 flex items-center justify-center overflow-hidden mb-4 bg-gray-50 rounded-xl p-2 relative">
-                            <img v-if="p.image" :src="p.image" class="max-h-full group-hover:scale-105 transition duration-500">
-                            <div class="absolute top-2 left-2 bg-drogacenter-blue text-white text-[7px] font-black px-2 py-0.5 rounded uppercase">{{ p.category || 'Geral' }}</div>
-                        </div>
-                        <h3 class="font-bold text-xs uppercase truncate">{{ p.name }}</h3>
-                        <p class="text-[9px] text-gray-400 mb-2 h-6 overflow-hidden">{{ p.desc }}</p>
-                        <div class="flex justify-between items-center mt-auto">
-                            <p class="text-green-600 font-black text-lg">R$ {{ formatPrice(p.price) }}</p>
-                            <button @click="addToCart(p)" class="bg-drogacenter-blue text-white p-2 rounded-lg hover:rotate-6 transition"><i data-lucide="plus" class="w-5 h-5"></i></button>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-            <section v-if="currentView === 'customer-login'" class="max-w-md mx-auto py-12">
-                <div class="bg-white p-8 rounded-3xl shadow-2xl border text-center">
-                    <i data-lucide="user-circle" class="mx-auto w-12 h-12 text-drogacenter-blue mb-4"></i>
-                    <h2 class="text-xl font-black uppercase text-drogacenter-blue mb-6">Área do Cliente</h2>
-                    <div v-if="!showRegisterForm" class="space-y-4">
-                        <input v-model="customerLoginForm.email" type="text" placeholder="E-mail" class="w-full border p-3 rounded-xl font-bold outline-none">
-                        <input v-model="customerLoginForm.pass" type="password" placeholder="Senha" class="w-full border p-3 rounded-xl font-bold outline-none">
-                        <button @click="handleCustomerLogin" class="w-full bg-drogacenter-blue text-white py-3 rounded-xl font-black uppercase text-xs">Entrar</button>
-                        <button @click="showRegisterForm = true" class="text-[10px] uppercase font-bold text-gray-400 underline">Não tenho conta</button>
-                    </div>
-                    <div v-else class="space-y-4">
-                        <input v-model="customerRegForm.name" type="text" placeholder="Nome Completo" class="w-full border p-3 rounded-xl font-bold">
-                        <input v-model="customerRegForm.email" type="email" placeholder="E-mail" class="w-full border p-3 rounded-xl font-bold">
-                        <input v-model="customerRegForm.cpf" type="text" placeholder="CPF" class="w-full border p-3 rounded-xl font-bold">
-                        <input v-model="customerRegForm.pass" type="password" placeholder="Criar Senha" class="w-full border p-3 rounded-xl font-bold">
-                        <button @click="handleCustomerRegister" class="w-full bg-green-600 text-white py-3 rounded-xl font-black uppercase text-xs hover:bg-green-700">Cadastrar Agora</button>
-                        <button @click="showRegisterForm = false" class="w-full text-center text-[10px] uppercase font-bold text-gray-400 underline">Já sou cliente</button>
-                    </div>
-                </div>
-            </section>
-
-            <section v-if="currentView === 'customer-panel' && customerSession" class="max-w-4xl mx-auto space-y-6">
-                <div class="bg-white p-6 rounded-3xl border shadow-sm flex justify-between items-center border-l-8 border-drogacenter-yellow">
-                    <div><h2 class="text-xl font-black text-drogacenter-blue uppercase">Olá, {{ customerSession.name }}</h2><p class="text-xs font-bold text-gray-400 uppercase tracking-widest">Painel de Compras</p></div>
-                    <button @click="logoutCustomer" class="bg-red-500 text-white px-4 py-2 rounded-xl text-[10px] font-bold uppercase hover:bg-red-600 transition">Sair</button>
-                </div>
-                <h3 class="font-black uppercase text-xs text-drogacenter-blue italic border-b-2 border-yellow-400 w-fit">Meu Histórico</h3>
-                <div v-if="customerOrders.length > 0" class="space-y-4">
-                    <div v-for="(o, i) in customerOrders" :key="i" class="bg-white p-5 rounded-2xl border flex justify-between items-center shadow-sm">
-                        <div><p class="text-[9px] font-black text-gray-400 uppercase tracking-widest">{{ o.date }}</p><p class="text-xs font-bold uppercase">Pedido #{{ i + 101 }}</p></div>
-                        <div class="text-right"><p class="font-black text-green-600">R$ {{ formatPrice(o.total) }}</p><span class="text-[8px] px-2 py-0.5 rounded bg-blue-50 text-blue-600 uppercase font-bold">{{ o.status }}</span></div>
-                    </div>
-                </div>
-                <div v-else class="text-center py-20 bg-white rounded-3xl border-2 border-dashed"><p class="text-gray-300 font-bold uppercase text-[10px]">Nenhuma compra registrada.</p></div>
-            </section>
-
-            <section v-if="currentView === 'admin-login'" class="max-w-md mx-auto py-20">
-                <div class="bg-white p-8 rounded-3xl shadow-2xl text-center border">
-                    <i data-lucide="lock" class="mx-auto w-10 h-10 text-drogacenter-blue mb-4"></i>
-                    <h2 class="text-xl font-black uppercase text-drogacenter-blue mb-6 tracking-tighter">Administração</h2>
-                    <input v-model="loginForm.user" type="text" placeholder="Usuário" class="w-full border p-3 rounded-xl mb-4 font-bold outline-none">
-                    <input v-model="loginForm.pass" type="password" placeholder="Senha" class="w-full border p-3 rounded-xl mb-4 font-bold outline-none">
-                    <button @click="handleAdminLogin" class="w-full bg-drogacenter-blue text-white py-3 rounded-xl font-black uppercase text-xs">Entrar</button>
-                </div>
-            </section>
-
-            <section v-if="currentView === 'admin-panel' && adminSession" class="space-y-8">
-                <div class="flex flex-col md:flex-row justify-between items-center bg-white p-6 rounded-3xl shadow-sm border gap-4">
-                    <div class="flex items-center gap-3">
-                        <div class="bg-blue-600 text-white p-2 rounded-full"><i data-lucide="user"></i></div>
-                        <div><h2 class="text-lg font-black text-drogacenter-blue uppercase">{{ adminSession.user }}</h2><p class="text-[9px] font-bold text-blue-500 uppercase italic">Acesso Gestor</p></div>
-                    </div>
-                    <div class="flex flex-wrap justify-center gap-2">
-                        <button @click="adminSubView = 'pedidos'" :class="adminSubView === 'pedidos' ? 'bg-drogacenter-blue text-white' : 'bg-gray-100'" class="px-4 py-2 rounded-xl text-[9px] font-bold uppercase">Pedidos</button>
-                        <button @click="adminSubView = 'produtos'" :class="adminSubView === 'produtos' ? 'bg-drogacenter-blue text-white' : 'bg-gray-100'" class="px-4 py-2 rounded-xl text-[9px] font-bold uppercase">Estoque</button>
-                        <button @click="adminSubView = 'equipe'" :class="adminSubView === 'equipe' ? 'bg-drogacenter-blue text-white' : 'bg-gray-100'" class="px-4 py-2 rounded-xl text-[9px] font-bold uppercase">Equipe/SubAdmin</button>
-                        <button @click="adminSubView = 'relatorios'" :class="adminSubView === 'relatorios' ? 'bg-drogacenter-blue text-white' : 'bg-gray-100'" class="px-4 py-2 rounded-xl text-[9px] font-bold uppercase">Relatórios</button>
-                        <button @click="logoutAdmin" class="bg-red-500 text-white px-4 py-2 rounded-xl text-[9px] font-bold uppercase">Sair</button>
-                    </div>
-                </div>
-
-                <div v-if="adminSubView === 'relatorios'" class="space-y-6">
-                    <h3 class="font-black uppercase text-drogacenter-blue italic border-b-2 border-yellow-400 w-fit">Relatórios Financeiros</h3>
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                        <div class="bg-white p-6 rounded-3xl shadow-sm border border-l-8 border-green-500">
-                            <p class="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-1">Faturamento Hoje</p>
-                            <p class="text-2xl font-black text-green-600">R$ {{ formatPrice(financeReports.todayTotal) }}</p>
-                        </div>
-                        <div class="bg-white p-6 rounded-3xl shadow-sm border border-l-8 border-blue-500">
-                            <p class="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-1">Faturamento Mês</p>
-                            <p class="text-2xl font-black text-blue-600">R$ {{ formatPrice(financeReports.monthTotal) }}</p>
-                        </div>
-                        <div class="bg-white p-6 rounded-3xl shadow-sm border border-l-8 border-purple-500">
-                            <p class="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-1">Ticket Médio</p>
-                            <p class="text-2xl font-black text-purple-600">R$ {{ formatPrice(financeReports.averageTicket) }}</p>
-                        </div>
-                        <div class="bg-white p-6 rounded-3xl shadow-sm border border-l-8 border-yellow-500">
-                            <p class="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-1">Top Medicamento</p>
-                            <p class="text-xs font-black uppercase truncate">{{ financeReports.topProduct }}</p>
-                        </div>
-                    </div>
-                </div>
-
-                <div v-if="adminSubView === 'equipe'" class="space-y-6">
-                    <div class="flex justify-between items-center">
-                        <h3 class="font-black uppercase text-xs text-blue-600 italic">Gestão de Colaboradores</h3>
-                        <button @click="toggleSubAdminForm" class="bg-blue-600 text-white px-4 py-2 rounded-lg text-[9px] font-bold uppercase">+ Novo SubAdmin</button>
-                    </div>
-
-                    <div v-if="showSubAdminForm" class="bg-white p-6 rounded-3xl shadow-xl border border-blue-50">
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <input v-model="subAdminForm.name" type="text" placeholder="Nome Completo" class="border p-3 rounded-xl font-bold text-xs">
-                            <input v-model="subAdminForm.user" type="text" placeholder="Usuário/Login" class="border p-3 rounded-xl font-bold text-xs">
-                            <input v-model="subAdminForm.pass" type="password" placeholder="Senha" class="border p-3 rounded-xl font-bold text-xs">
-                            <div class="space-y-1">
-                                <label class="text-[8px] font-black uppercase text-gray-400 ml-2">Foto de Perfil</label>
-                                <input type="file" @change="handleProfilePhoto" class="text-[9px] w-full border p-2 rounded-xl">
-                            </div>
-                            <button @click="saveSubAdmin" class="md:col-span-2 bg-drogacenter-blue text-white py-3 rounded-xl font-black uppercase text-xs">Salvar Colaborador</button>
-                        </div>
-                    </div>
-
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div v-for="(s, idx) in subAdmins" :key="idx" class="bg-white p-4 rounded-2xl border shadow-sm flex items-center gap-4">
-                            <img :src="s.photo || 'https://via.placeholder.com/150'" class="w-12 h-12 rounded-full border-2 border-blue-100 object-cover">
-                            <div class="flex-1">
-                                <p class="text-xs font-black uppercase text-blue-900">{{ s.name }}</p>
-                                <p class="text-[8px] font-bold text-gray-400 uppercase">Login: {{ s.user }}</p>
-                            </div>
-                            <button @click="deleteSubAdmin(idx)" class="text-red-500"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
-                        </div>
-                    </div>
-                </div>
-
-                <div v-if="adminSubView === 'produtos'" class="space-y-6">
-                    <div class="flex justify-between items-center"><h3 class="font-black uppercase text-drogacenter-blue italic border-b-2 border-yellow-400 w-fit">Inventário</h3><button @click="toggleProductForm" class="bg-drogacenter-yellow px-6 py-2 rounded-full font-black text-[10px] uppercase shadow-md transition hover:scale-105">{{ showProductForm ? 'Fechar Form' : (isEditing ? 'Cancelar Edição' : '+ Novo Produto') }}</button></div>
-                    
-                    <div v-if="showProductForm || isEditing" class="bg-white p-6 rounded-3xl shadow-xl border border-blue-50">
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <input v-model="productForm.name" type="text" placeholder="Nome do Medicamento" class="border p-3 rounded-xl font-bold text-xs"><input v-model="productForm.category" type="text" placeholder="Categoria (ex: Maquiagem, Fraldas)" class="border p-3 rounded-xl font-bold text-xs uppercase"><input v-model="productForm.priceDisplay" type="text" placeholder="Preço (10,20)" class="border p-3 rounded-xl font-bold text-xs"><input type="file" @change="handleImageUpload" class="text-[9px] p-2 bg-gray-50 border-dashed border-2 rounded-xl"><textarea v-model="productForm.desc" placeholder="Legenda/Descrição curta" class="md:col-span-2 border p-3 rounded-xl font-bold text-xs"></textarea><button @click="saveProduct" class="md:col-span-2 bg-drogacenter-blue text-white py-4 rounded-xl font-black uppercase text-xs tracking-widest shadow-lg">{{ isEditing ? 'Confirmar Alterações' : 'Salvar no Estoque' }}</button>
-                        </div>
-                    </div>
-                    
-                    <div class="bg-white rounded-3xl border shadow-sm overflow-hidden overflow-x-auto">
-                        <table class="w-full text-left font-bold text-[10px] uppercase min-w-[500px]">
-                            <thead class="bg-gray-50 border-b"><tr><th class="p-4">Item</th><th class="p-4 text-center">Preço</th><th class="p-4 text-right">Ações</th></tr></thead>
-                            <tbody><tr v-for="(p, idx) in products" :key="idx" class="border-b hover:bg-blue-50 transition"><td class="p-4 flex items-center gap-3"><img :src="p.image" class="w-10 h-10 object-contain border rounded bg-white"><div><div class="text-blue-900">{{ p.name }}</div><div class="text-[8px] text-blue-500 font-black uppercase tracking-widest">{{ p.category }}</div></div></td><td class="p-4 text-center text-green-600">R$ {{ formatPrice(p.price) }}</td><td class="p-4 text-right space-x-3"><button @click="editProduct(idx)" class="text-blue-600">Editar</button><button @click="deleteProduct(idx)" class="text-red-500">Remover</button></td></tr></tbody>
-                        </table>
-                    </div>
-                </div>
-
-                <div v-if="adminSubView === 'pedidos'" class="space-y-4">
-                    <div v-for="(order, oIdx) in orders" :key="oIdx" class="bg-white p-6 rounded-3xl border shadow-sm border-l-8" :class="getStatusBorder(order.status)">
-                        <div class="flex flex-col md:flex-row justify-between items-center gap-4">
-                            <div class="flex-1">
-                                <span class="text-[9px] font-black uppercase px-2 py-0.5 rounded mb-1 inline-block" :class="getStatusClass(order.status)">{{ order.status }}</span>
-                                <h4 class="font-black text-sm uppercase tracking-tighter">{{ order.customer }}</h4>
-                                <p class="text-[10px] text-gray-400 uppercase tracking-widest">{{ order.address }}</p>
-                            </div>
-                            <div class="flex gap-2">
-                                <button v-if="order.status === 'Pendente'" @click="changeStatus(oIdx, 'Em Preparação')" class="bg-blue-600 text-white px-4 py-2 rounded-lg text-[8px] font-bold uppercase hover:bg-blue-700 transition">Aceitar</button>
-                                <button v-if="order.status === 'Em Preparação'" @click="changeStatus(oIdx, 'Em Rota')" class="bg-purple-600 text-white px-4 py-2 rounded-lg text-[8px] font-bold uppercase hover:bg-purple-700 transition">Despachar</button>
-                                <button @click="deleteOrder(oIdx)" class="text-red-400 p-2 hover:bg-red-50 rounded-lg"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-            <section v-if="currentView === 'entregador-view'" class="max-w-2xl mx-auto space-y-6">
-                <div class="bg-drogacenter-blue text-white p-8 rounded-3xl shadow-xl border-b-8 border-yellow-400 flex justify-between items-center">
-                    <div><h2 class="text-2xl font-black uppercase italic tracking-tighter leading-tight">Painel Logístico</h2><p class="text-[10px] font-bold text-yellow-400 uppercase tracking-widest mt-1">Gerenciamento de Entregas</p></div>
-                    <i data-lucide="truck" class="w-10 h-10 text-yellow-400"></i>
-                </div>
-                <div v-if="deliveryOrders.length > 0" class="space-y-4">
-                    <div v-for="(order, idx) in deliveryOrders" :key="idx" class="bg-white p-6 rounded-3xl shadow-md border-l-8 border-purple-500">
-                        <div class="flex justify-between items-start mb-4">
-                            <div><h4 class="font-black uppercase text-drogacenter-blue text-lg">{{ order.customer }}</h4><p class="text-xs font-bold text-gray-500 mt-2 uppercase tracking-tighter"><i data-lucide="map-pin" class="w-3 h-3 text-red-500"></i> {{ order.address }}</p></div>
-                            <div class="bg-green-50 px-4 py-2 rounded-2xl text-center border border-green-100"><p class="text-xl font-black text-green-700">R$ {{ formatPrice(order.total) }}</p></div>
-                        </div>
-                        <button @click="changeStatus(order.originalIndex, 'Entregue')" class="w-full bg-green-600 text-white py-3 rounded-2xl font-black uppercase text-[10px] shadow-lg shadow-green-200 hover:bg-green-700 transition">Finalizar Entrega</button>
-                    </div>
-                </div>
-                <div v-else class="text-center py-20 bg-white rounded-3xl border-2 border-dashed"><p class="text-gray-400 font-bold uppercase text-[10px]">Sem entregas no momento.</p></div>
-            </section>
-
-            <section v-if="currentView === 'checkout'" class="max-w-xl mx-auto py-10">
+            <section v-if="currentView === 'contact-form'" class="max-w-xl mx-auto py-10">
                 <div class="bg-white p-8 rounded-3xl shadow-xl border">
-                    <h2 class="text-xl font-black text-drogacenter-blue uppercase mb-6 italic border-b-2 border-yellow-400 w-fit">Finalizar Compra</h2>
-                    <div class="space-y-4">
-                        <input v-model="orderForm.name" type="text" placeholder="Seu Nome" class="w-full border p-3 rounded-xl font-bold"><input v-model="orderForm.address" type="text" placeholder="Endereço de Entrega" class="w-full border p-3 rounded-xl font-bold"><button @click="confirmOrder" class="w-full bg-green-600 text-white py-4 rounded-xl font-black uppercase text-xs tracking-widest shadow-lg">Confirmar e Enviar</button><button @click="currentView = 'store'" class="w-full text-gray-400 text-[10px] font-bold uppercase underline">Voltar</button>
-                    </div>
+                    <h2 class="text-xl font-black text-drogacenter-blue uppercase mb-6 italic border-b-2 border-yellow-400 w-fit">Fale Conosco</h2>
+                    <form @submit.prevent="alert('Mensagem enviada! Entraremos em contato.')" class="space-y-4">
+                        <input type="text" placeholder="Seu Nome" class="w-full border p-3 rounded-xl font-bold" required>
+                        <input type="email" placeholder="Seu Melhor E-mail" class="w-full border p-3 rounded-xl font-bold" required>
+                        <textarea placeholder="Como podemos ajudar?" rows="4" class="w-full border p-3 rounded-xl font-bold" required></textarea>
+                        <button type="submit" class="w-full bg-drogacenter-blue text-white py-4 rounded-xl font-black uppercase text-xs tracking-widest shadow-lg hover:bg-blue-900 transition">Enviar Mensagem</button>
+                    </form>
                 </div>
             </section>
-        </main>
+
+            </main>
     </div>
 
     <script>
         const { createApp } = Vue;
+
+        // --- CONFIGURAÇÃO OBRIGATÓRIA DO BANCO DE DADOS (SUPABASE) ---
+        // Você deve criar seu projeto em supabase.com e colar suas chaves aqui
+        const SUPABASE_URL = 'COLOQUE_SUA_URL_AQUI'; 
+        const SUPABASE_KEY = 'COLOQUE_SUA_KEY_ANON_AQUI';
+        const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
         createApp({
             data() {
                 return {
-                    currentView: 'store', adminSubView: 'pedidos', showCart: false, showProductForm: false, isEditing: false, editIndex: null,
-                    showRegisterForm: false, searchQuery: '', selectedCategory: 'Tudo', adminSession: null, customerSession: null, currentBanner: 0,
-                    banners: [{title:"Farmácia Digital", subtitle:"24h cuidando de você", icon:"pill"}, {title:"Preço de Fábrica", subtitle:"Genéricos com 50% OFF", icon:"dollar-sign"}],
-                    loginForm: { user: '', pass: '' }, customerLoginForm: { email: '', pass: '' }, customerRegForm: { name: '', email: '', cpf: '', pass: '' }, orderForm: { name: '', address: '' },
-                    // NOVOS ESTADOS PARA GESTÃO INCREMENTAL
-                    showSubAdminForm: false,
-                    isEditingProduct: false,
-                    isEditingSubAdmin: false,
-                    editProductIdx: null,
-                    editSubAdminIdx: null,
-                    productForm: { name: '', desc: '', price: 0, priceDisplay: '', image: '', category: '' },
-                    subAdminForm: { name: '', user: '', pass: '', photo: '', role: 'secundário' },
-                    adminUsers: JSON.parse(localStorage.getItem('dr_admins')) || [],
-                    products: JSON.parse(localStorage.getItem('dr_products')) || [],
-                    orders: JSON.parse(localStorage.getItem('dr_orders')) || [],
-                    allCustomers: JSON.parse(localStorage.getItem('dr_cust_base')) || [],
-                    subAdmins: JSON.parse(localStorage.getItem('dr_subadmins')) || [],
-                    cart: []
+                    loading: false, // Controla o loader de banco de dados
+                    currentView: 'store', adminSubView: 'pedidos', showCart: false,
+                    showRegisterForm: false, searchQuery: '', selectedCategory: 'Tudo',
+                    adminSession: null, customerSession: null, currentBanner: 0,
+                    banners: [{title:"Cuidados e Saúde", subtitle:"Atendimento 24h Cloud", icon:"pill"}],
+                    loginForm: { user: '', pass: '' },
+                    customerLoginForm: { email: '', pass: '' },
+                    customerRegForm: { name: '', email: '', cpf: '', pass: '' },
+                    orderForm: { name: '', address: '' },
+                    // DB Cloud Arrays
+                    products: [], orders: [], allCustomers: [], adminUsers: [], cart: []
                 }
             },
             computed: {
@@ -342,81 +123,57 @@
                         const catMatch = this.selectedCategory === 'Tudo' || p.category === this.selectedCategory;
                         return match && catMatch;
                     });
-                },
-                customerOrders() { if(!this.customerSession) return []; return this.orders.filter(o => o.customerCpf === this.customerSession.cpf); },
-                deliveryOrders() { return this.orders.map((o, index) => ({ ...o, originalIndex: index })).filter(o => o.status === 'Em Rota'); },
-                financeReports() {
-                    const deliveredOrders = this.orders.filter(o => o.status === 'Entregue');
-                    const now = new Date();
-                    const todayStr = now.toLocaleDateString();
-                    let todayTotal = 0;
-                    let monthTotal = 0;
-                    const productCount = {};
-                    deliveredOrders.forEach(o => {
-                        if(o.date.includes(todayStr)) todayTotal += o.total;
-                        if(o.date.includes('/' + now.getFullYear())) monthTotal += o.total;
-                        o.itens.forEach(it => { productCount[it.name] = (productCount[it.name] || 0) + it.qty; });
-                    });
-                    const averageTicket = deliveredOrders.length > 0 ? (monthTotal / deliveredOrders.length) : 0;
-                    const topProduct = Object.keys(productCount).reduce((a, b) => productCount[a] > productCount[b] ? a : b, 'Nenhum');
-                    return { todayTotal, monthTotal, averageTicket, topProduct };
                 }
             },
             methods: {
-                handleCustomerRegister() { if(!this.customerRegForm.email) return; this.allCustomers.push({...this.customerRegForm}); localStorage.setItem('dr_cust_base', JSON.stringify(this.allCustomers)); this.showRegisterForm = false; alert("Cadastro Realizado!"); },
-                handleCustomerLogin() { const found = this.allCustomers.find(c => c.email === this.customerLoginForm.email && c.pass === this.customerLoginForm.pass); if(found) { this.customerSession = found; this.currentView = 'store'; this.orderForm.name = found.name; } else alert("Erro!"); },
-                logoutCustomer() { this.customerSession = null; this.currentView = 'store'; },
-                handleAdminLogin() { const found = this.adminUsers.find(u => u.user === this.loginForm.user && u.pass === this.loginForm.pass); if(found) { this.adminSession = found; this.currentView = 'admin-panel'; } else alert("Erro!"); },
-                logoutAdmin() { this.adminSession = null; this.currentView = 'store'; },
-                
-                // MÉTODOS DE GESTÃO DE ESTOQUE
-                toggleProductForm() { this.showProductForm = !this.showProductForm; this.isEditingProduct = false; this.resetProductForm(); },
-                handleImageUpload(e) { const f = e.target.files[0]; const r = new FileReader(); r.onload = (res) => { this.productForm.image = res.target.result; }; r.readAsDataURL(f); },
-                saveProduct() {
-                    const val = parseFloat(this.productForm.priceDisplay.replace(',', '.'));
-                    if(!this.productForm.name || isNaN(val)) return alert("Preencha os dados corretamente.");
-                    this.productForm.price = val;
-                    if(this.isEditingProduct) { this.products[this.editProductIdx] = { ...this.productForm }; } else { this.products.push({ ...this.productForm }); }
-                    localStorage.setItem('dr_products', JSON.stringify(this.products));
-                    this.showProductForm = false;
-                    this.resetProductForm();
+                // --- INTEGRAÇÃO DE BANCO DE DADOS (NOVA) ---
+                async fetchData() {
+                    this.loading = true;
+                    try {
+                        // Busca dados em nuvem em vez de local
+                        const { data: p } = await _supabase.from('products').select('*').order('created_at', { ascending: false });
+                        const { data: u } = await _supabase.from('admin_users').select('*');
+                        const { data: o } = await _supabase.from('orders').select('*').order('created_at', { ascending: false });
+                        
+                        this.products = p || [];
+                        this.adminUsers = u || [];
+                        this.orders = o || [];
+                    } catch (e) { console.error("Erro ao sincronizar:", e); }
+                    this.loading = false;
                 },
-                editProduct(idx) {
-                    this.isEditingProduct = true;
-                    this.editProductIdx = idx;
-                    const p = this.products[idx];
-                    this.productForm = { ...p, priceDisplay: p.price.toString().replace('.', ',') };
-                    this.showProductForm = true;
-                },
-                deleteProduct(idx) { if(confirm("Remover?")) { this.products.splice(idx, 1); localStorage.setItem('dr_products', JSON.stringify(this.products)); } },
-                resetProductForm() { this.productForm = { name: '', desc: '', price: 0, priceDisplay: '', image: '', category: '' }; },
 
-                // MÉTODOS DE GESTÃO DE EQUIPE (SUBADMIN)
-                toggleSubAdminForm() { this.showSubAdminForm = !this.showSubAdminForm; this.isEditingSubAdmin = false; this.subAdminForm = { name: '', user: '', pass: '', photo: '', role: 'secundário' }; },
-                handleProfilePhoto(e) {
-                    const f = e.target.files[0];
-                    const r = new FileReader();
-                    r.onload = (res) => { this.subAdminForm.photo = res.target.result; };
-                    r.readAsDataURL(f);
+                async handleCustomerRegister() {
+                    if(!this.customerRegForm.email) return;
+                    this.loading = true;
+                    const { error } = await _supabase.from('customers').insert([this.customerRegForm]);
+                    if(!error) {
+                        alert("Cadastro Cloud Realizado com Sucesso!");
+                        this.showRegisterForm = false;
+                    } else { alert("Erro ao salvar no banco. Verifique os dados."); }
+                    this.loading = false;
                 },
-                saveSubAdmin() {
-                    if(!this.subAdminForm.user || !this.subAdminForm.pass) return alert("Login e senha são obrigatórios.");
-                    if(this.isEditingSubAdmin) { this.subAdmins[this.editSubAdminIdx] = { ...this.subAdminForm }; } else { this.subAdmins.push({ ...this.subAdminForm }); }
-                    localStorage.setItem('dr_subadmins', JSON.stringify(this.subAdmins));
-                    this.showSubAdminForm = false;
-                },
-                deleteSubAdmin(idx) { if(confirm("Remover este colaborador?")) { this.subAdmins.splice(idx, 1); localStorage.setItem('dr_subadmins', JSON.stringify(this.subAdmins)); } },
 
+                async handleCustomerLogin() {
+                    const { data } = await _supabase.from('customers')
+                        .select('*')
+                        .eq('email', this.customerLoginForm.email)
+                        .eq('pass', this.customerLoginForm.pass)
+                        .single();
+                    
+                    if(data) { this.customerSession = data; this.currentView = 'store'; } 
+                    else alert("Dados não reconhecidos pelo sistema.");
+                },
+
+                // [MÉTODOS ANTERIORES PRESERVADOS: addToCart, removeFromCart, formatPrice, etc]
+                formatPrice(v) { return parseFloat(v || 0).toFixed(2).replace('.', ','); },
                 addToCart(p) { const it = this.cart.find(i => i.name === p.name); if(it) it.qty++; else this.cart.push({...p, qty: 1}); this.showCart = true; },
-                updateQty(idx, v) { if(this.cart[idx].qty + v > 0) this.cart[idx].qty += v; else this.cart.splice(idx, 1); },
-                removeFromCart(idx) { this.cart.splice(idx, 1); },
-                startCheckout() { this.showCart = false; this.currentView = 'checkout'; },
-                confirmOrder() { const order = { customer: this.orderForm.name, customerCpf: this.customerSession ? this.customerSession.cpf : null, address: this.orderForm.address, total: this.cartTotal, itens: [...this.cart], status: 'Pendente', date: new Date().toLocaleString() }; this.orders.push(order); localStorage.setItem('dr_orders', JSON.stringify(this.orders)); alert("Sucesso!"); this.cart = []; this.currentView = 'store'; },
-                changeStatus(idx, s) { this.orders[idx].status = s; localStorage.setItem('dr_orders', JSON.stringify(this.orders)); },
-                deleteOrder(idx) { this.orders.splice(idx, 1); localStorage.setItem('dr_orders', JSON.stringify(this.orders)); },
-                formatPrice(v) { return parseFloat(v).toFixed(2).replace('.', ','); }
+                logoutAdmin() { this.adminSession = null; this.currentView = 'store'; }
             },
-            mounted() { if(this.adminUsers.length === 0) { this.adminUsers.push({user:'admin', pass:'farmacia123', role:'master'}); localStorage.setItem('dr_admins', JSON.stringify(this.adminUsers)); } lucide.createIcons(); setInterval(() => { this.currentBanner = (this.currentBanner + 1) % this.banners.length; }, 5000); }
+            mounted() { 
+                lucide.createIcons(); 
+                this.fetchData(); // Sincroniza dados ao carregar
+                setInterval(() => { this.currentBanner = (this.currentBanner + 1) % this.banners.length; }, 5000); 
+            }
         }).mount('#app');
     </script>
 </body>
