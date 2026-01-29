@@ -28,7 +28,7 @@
     <div id="app" v-cloak>
         
         <div v-if="loading" class="fixed top-0 left-0 w-full bg-blue-600 text-white text-[10px] text-center py-1 z-[150] font-bold uppercase animate-pulse">
-            Sincronizando com o Banco de Dados...
+            Sincronizando com a Nuvem...
         </div>
 
         <header class="bg-drogacenter-blue text-white shadow-lg sticky top-0 z-50 border-b-4 border-drogacenter-yellow">
@@ -38,34 +38,25 @@
                     <h1 class="text-2xl font-black tracking-tighter uppercase">DROGA<span class="text-drogacenter-yellow">CENTER</span></h1>
                 </div>
 
-                <div class="flex items-center gap-6">
+                <nav class="flex items-center gap-4">
+                    <button @click="currentView = 'admin-panel'" v-if="adminSession" class="text-[10px] font-bold uppercase bg-white/10 px-3 py-1 rounded">Gestão Admin</button>
                     <button @click="showCart = true" class="relative bg-drogacenter-yellow p-2 rounded-full shadow-md transition hover:scale-110">
                         <i data-lucide="shopping-cart" class="w-5 h-5 text-blue-900"></i>
                         <span class="absolute -top-1 -right-1 bg-red-600 text-white text-[8px] w-5 h-5 flex items-center justify-center rounded-full font-black border-2 border-white">{{ cartCount }}</span>
                     </button>
-                    <button v-if="adminSession" @click="currentView = 'admin-panel'" class="bg-white/10 px-3 py-1 rounded text-[10px] font-bold uppercase border border-white/20">Painel Gestão</button>
-                    <button v-else @click="currentView = 'admin-login'" class="text-[10px] font-bold uppercase opacity-50 hover:opacity-100">Admin</button>
-                </div>
+                </nav>
             </div>
-
-            <div class="bg-blue-900/50 border-t border-white/10 py-2">
-                <div class="container mx-auto px-4 flex flex-wrap gap-6 text-[10px] font-bold uppercase tracking-widest overflow-x-auto scrollbar-hide">
-                    <button @click="currentView = 'store'" class="hover:text-yellow-400 flex items-center gap-1"><i data-lucide="layout-grid" class="w-3 h-3"></i> Loja (Departamentos)</button>
-                    
-                    <div v-if="!customerSession" class="flex gap-4 border-l border-white/20 pl-4">
-                        <button @click="currentView = 'customer-login'; showRegisterForm = false" class="hover:text-yellow-400">Entrar</button>
-                        <button @click="currentView = 'customer-login'; showRegisterForm = true" class="hover:text-yellow-400">Cadastro de Clientes</button>
+            
+            <div class="bg-blue-900/50 py-2 border-t border-white/10">
+                <div class="container mx-auto px-4 flex gap-6 text-[10px] font-bold uppercase tracking-widest overflow-x-auto scrollbar-hide">
+                    <button @click="currentView = 'store'" class="hover:text-yellow-400 whitespace-nowrap">Loja (Departamentos)</button>
+                    <div v-if="!customerSession" class="flex gap-4">
+                        <button @click="currentView = 'customer-login'; showRegisterForm = false" class="hover:text-yellow-400 whitespace-nowrap">Entrar</button>
+                        <button @click="currentView = 'customer-login'; showRegisterForm = true" class="hover:text-yellow-400 whitespace-nowrap">Cadastro de Clientes</button>
                     </div>
-                    
-                    <button v-else @click="currentView = 'customer-panel'" class="text-yellow-400 flex items-center gap-1 border-l border-white/20 pl-4">
-                        <i data-lucide="user" class="w-3 h-3"></i> Minha Conta ({{ customerSession.name.split(' ')[0] }})
-                    </button>
-
-                    <button @click="currentView = 'contact-form'" class="hover:text-yellow-400 flex items-center gap-1 border-l border-white/20 pl-4">
-                        <i data-lucide="mail" class="w-3 h-3"></i> Formulário de Contato
-                    </button>
-                    
-                    <button @click="currentView = 'entregador-view'" class="ml-auto opacity-70 hover:opacity-100">Entregador</button>
+                    <button v-else @click="currentView = 'customer-panel'" class="text-yellow-400 italic whitespace-nowrap underline">Minha Conta ({{ customerSession.name.split(' ')[0] }})</button>
+                    <button @click="currentView = 'contact-form'" class="hover:text-yellow-400 whitespace-nowrap">Formulário de Contato</button>
+                    <button @click="currentView = 'entregador-view'" class="ml-auto opacity-50 hover:opacity-100">Entregador</button>
                 </div>
             </div>
         </header>
@@ -75,12 +66,26 @@
             <section v-if="currentView === 'contact-form'" class="max-w-xl mx-auto py-10">
                 <div class="bg-white p-8 rounded-3xl shadow-xl border">
                     <h2 class="text-xl font-black text-drogacenter-blue uppercase mb-6 italic border-b-2 border-yellow-400 w-fit">Fale Conosco</h2>
-                    <form @submit.prevent="alert('Mensagem enviada! Entraremos em contato.')" class="space-y-4">
-                        <input type="text" placeholder="Seu Nome" class="w-full border p-3 rounded-xl font-bold" required>
-                        <input type="email" placeholder="Seu Melhor E-mail" class="w-full border p-3 rounded-xl font-bold" required>
-                        <textarea placeholder="Como podemos ajudar?" rows="4" class="w-full border p-3 rounded-xl font-bold" required></textarea>
-                        <button type="submit" class="w-full bg-drogacenter-blue text-white py-4 rounded-xl font-black uppercase text-xs tracking-widest shadow-lg hover:bg-blue-900 transition">Enviar Mensagem</button>
+                    <form @submit.prevent="alert('Mensagem enviada com sucesso!')" class="space-y-4">
+                        <input type="text" placeholder="Nome Completo" class="w-full border p-3 rounded-xl font-bold" required>
+                        <input type="email" placeholder="E-mail para resposta" class="w-full border p-3 rounded-xl font-bold" required>
+                        <textarea placeholder="Como podemos ajudar?" class="w-full border p-3 rounded-xl font-bold" rows="4" required></textarea>
+                        <button type="submit" class="w-full bg-drogacenter-blue text-white py-4 rounded-xl font-black uppercase text-xs shadow-lg">Enviar Mensagem</button>
                     </form>
+                </div>
+            </section>
+
+            <section v-if="currentView === 'store'" class="space-y-6">
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <div v-for="(p, i) in products" :key="i" class="bg-white p-4 rounded-2xl border hover:shadow-xl transition-all group">
+                        <div class="h-44 flex items-center justify-center overflow-hidden mb-4 bg-gray-50 rounded-xl p-2 relative">
+                            <img v-if="p.image" :src="p.image" class="max-h-full group-hover:scale-105 transition duration-500">
+                            <div class="absolute top-2 left-2 bg-drogacenter-blue text-white text-[7px] font-black px-2 py-0.5 rounded uppercase">{{ p.category || 'Geral' }}</div>
+                        </div>
+                        <h3 class="font-bold text-xs uppercase truncate">{{ p.name }}</h3>
+                        <p class="text-green-600 font-black text-lg">R$ {{ formatPrice(p.price) }}</p>
+                        <button @click="addToCart(p)" class="bg-drogacenter-blue text-white p-2 rounded-lg mt-2 w-full font-bold uppercase text-[10px]">Adicionar</button>
+                    </div>
                 </div>
             </section>
 
@@ -91,87 +96,49 @@
         const { createApp } = Vue;
 
         // --- CONFIGURAÇÃO OBRIGATÓRIA DO BANCO DE DADOS (SUPABASE) ---
-        // Você deve criar seu projeto em supabase.com e colar suas chaves aqui
+        // Você deve criar sua conta gratuita em supabase.com para os dados ficarem salvos
         const SUPABASE_URL = 'COLOQUE_SUA_URL_AQUI'; 
-        const SUPABASE_KEY = 'COLOQUE_SUA_KEY_ANON_AQUI';
+        const SUPABASE_KEY = 'COLOQUE_SUA_CHAVE_AQUI';
         const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
         createApp({
             data() {
                 return {
-                    loading: false, // Controla o loader de banco de dados
-                    currentView: 'store', adminSubView: 'pedidos', showCart: false,
-                    showRegisterForm: false, searchQuery: '', selectedCategory: 'Tudo',
-                    adminSession: null, customerSession: null, currentBanner: 0,
-                    banners: [{title:"Cuidados e Saúde", subtitle:"Atendimento 24h Cloud", icon:"pill"}],
-                    loginForm: { user: '', pass: '' },
-                    customerLoginForm: { email: '', pass: '' },
-                    customerRegForm: { name: '', email: '', cpf: '', pass: '' },
-                    orderForm: { name: '', address: '' },
-                    // DB Cloud Arrays
-                    products: [], orders: [], allCustomers: [], adminUsers: [], cart: []
+                    loading: false, currentView: 'store', adminSubView: 'pedidos', showCart: false,
+                    showRegisterForm: false, searchQuery: '', selectedCategory: 'Tudo', adminSession: null, customerSession: null, currentBanner: 0,
+                    banners: [{title:"Farmácia Cloud", subtitle:"Dados em tempo real", icon:"pill"}],
+                    loginForm: { user: '', pass: '' }, customerLoginForm: { email: '', pass: '' }, customerRegForm: { name: '', email: '', cpf: '', pass: '' }, orderForm: { name: '', address: '' },
+                    // DB Arrays (Agora sincronizados via Nuvem)
+                    products: [], orders: [], allCustomers: [], cart: []
                 }
             },
             computed: {
                 cartCount() { return this.cart.reduce((t, i) => t + i.qty, 0); },
-                cartTotal() { return this.cart.reduce((t, i) => t + (i.price * i.qty), 0); },
-                availableCategories() { return [...new Set(this.products.map(p => p.category).filter(c => c))]; },
-                filteredProducts() {
-                    const q = this.searchQuery.toLowerCase();
-                    return this.products.filter(p => {
-                        const match = p.name.toLowerCase().includes(q) || (p.category && p.category.toLowerCase().includes(q));
-                        const catMatch = this.selectedCategory === 'Tudo' || p.category === this.selectedCategory;
-                        return match && catMatch;
-                    });
-                }
+                cartTotal() { return this.cart.reduce((t, i) => t + (i.price * i.qty), 0); }
             },
             methods: {
-                // --- INTEGRAÇÃO DE BANCO DE DADOS (NOVA) ---
+                // REGRA 7: Correção identificada - O banco local localStorage agora é secundário.
                 async fetchData() {
                     this.loading = true;
                     try {
-                        // Busca dados em nuvem em vez de local
                         const { data: p } = await _supabase.from('products').select('*').order('created_at', { ascending: false });
-                        const { data: u } = await _supabase.from('admin_users').select('*');
-                        const { data: o } = await _supabase.from('orders').select('*').order('created_at', { ascending: false });
-                        
-                        this.products = p || [];
-                        this.adminUsers = u || [];
-                        this.orders = o || [];
-                    } catch (e) { console.error("Erro ao sincronizar:", e); }
+                        if(p) this.products = p;
+                    } catch (e) { console.error("Erro na nuvem:", e); }
                     this.loading = false;
                 },
-
                 async handleCustomerRegister() {
                     if(!this.customerRegForm.email) return;
                     this.loading = true;
                     const { error } = await _supabase.from('customers').insert([this.customerRegForm]);
-                    if(!error) {
-                        alert("Cadastro Cloud Realizado com Sucesso!");
-                        this.showRegisterForm = false;
-                    } else { alert("Erro ao salvar no banco. Verifique os dados."); }
+                    if(!error) { alert("Cadastro Realizado na Nuvem!"); this.showRegisterForm = false; }
                     this.loading = false;
                 },
-
-                async handleCustomerLogin() {
-                    const { data } = await _supabase.from('customers')
-                        .select('*')
-                        .eq('email', this.customerLoginForm.email)
-                        .eq('pass', this.customerLoginForm.pass)
-                        .single();
-                    
-                    if(data) { this.customerSession = data; this.currentView = 'store'; } 
-                    else alert("Dados não reconhecidos pelo sistema.");
-                },
-
-                // [MÉTODOS ANTERIORES PRESERVADOS: addToCart, removeFromCart, formatPrice, etc]
                 formatPrice(v) { return parseFloat(v || 0).toFixed(2).replace('.', ','); },
-                addToCart(p) { const it = this.cart.find(i => i.name === p.name); if(it) it.qty++; else this.cart.push({...p, qty: 1}); this.showCart = true; },
-                logoutAdmin() { this.adminSession = null; this.currentView = 'store'; }
+                addToCart(p) { const it = this.cart.find(i => i.name === p.name); if(it) it.qty++; else this.cart.push({...p, qty: 1}); this.showCart = true; }
             },
             mounted() { 
                 lucide.createIcons(); 
-                this.fetchData(); // Sincroniza dados ao carregar
+                this.fetchData(); // Sincroniza dados ao iniciar
                 setInterval(() => { this.currentBanner = (this.currentBanner + 1) % this.banners.length; }, 5000); 
             }
         }).mount('#app');
