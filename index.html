@@ -64,24 +64,16 @@
         <main class="container mx-auto px-4 py-8">
             
             <section v-if="currentView === 'store'" class="space-y-6">
-                <div class="relative h-48 md:h-64 rounded-3xl overflow-hidden shadow-lg bg-drogacenter-blue">
+                <div v-if="banners.length" class="relative h-48 md:h-64 rounded-3xl overflow-hidden shadow-lg bg-drogacenter-blue">
                     <transition name="fade" mode="out-in">
                         <div :key="currentBanner" class="absolute inset-0 w-full h-full flex items-center justify-between px-10">
                             <div class="text-white max-w-lg z-10">
-                                <h2 class="text-2xl md:text-4xl font-black uppercase italic leading-tight">{{ banners[currentBanner]?.title }}</h2>
-                                <p class="text-yellow-400 font-bold uppercase text-[10px] mt-2 tracking-widest">{{ banners[currentBanner]?.subtitle }}</p>
+                                <h2 class="text-2xl md:text-4xl font-black uppercase italic leading-tight">{{ banners[currentBanner].title }}</h2>
+                                <p class="text-yellow-400 font-bold uppercase text-[10px] mt-2 tracking-widest">{{ banners[currentBanner].subtitle }}</p>
                             </div>
-                            <img :src="banners[currentBanner]?.image" class="absolute right-0 h-full w-1/2 object-cover opacity-60">
+                            <img v-if="banners[currentBanner].image" :src="banners[currentBanner].image" class="absolute right-0 h-full w-1/2 object-cover opacity-60">
                         </div>
                     </transition>
-                </div>
-
-                <div class="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-                    <button v-for="cat in categories" :key="cat" @click="selectedCategory = cat" 
-                        :class="selectedCategory === cat ? 'bg-drogacenter-blue text-white' : 'bg-white text-gray-400 border'"
-                        class="px-4 py-2 rounded-full text-[9px] font-black uppercase tracking-widest whitespace-nowrap transition">
-                        {{ cat }}
-                    </button>
                 </div>
 
                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -97,53 +89,62 @@
                 </div>
             </section>
 
-            <section v-if="currentView === 'customer-login'" class="max-w-md mx-auto py-12">
-                <div class="bg-white p-8 rounded-3xl shadow-2xl border text-center">
-                    <div class="flex mb-8 bg-gray-100 p-1 rounded-xl">
-                        <button @click="authMode = 'login'" :class="authMode === 'login' ? 'bg-white shadow text-blue-900' : 'text-gray-400'" class="flex-1 py-2 rounded-lg font-bold text-[10px] uppercase transition-all">Entrar</button>
-                        <button @click="authMode = 'register'" :class="authMode === 'register' ? 'bg-white shadow text-blue-900' : 'text-gray-400'" class="flex-1 py-2 rounded-lg font-bold text-[10px] uppercase transition-all">Cadastrar</button>
-                    </div>
-                    
-                    <div v-if="authMode === 'login'" class="space-y-4">
-                        <input v-model="customerLoginForm.email" type="email" placeholder="E-mail" class="w-full border p-3 rounded-xl font-bold outline-none">
-                        <button @click="handleCustomerLogin" class="w-full bg-drogacenter-blue text-white py-3 rounded-xl font-black uppercase text-xs">Acessar</button>
-                    </div>
-                    <div v-else class="space-y-4 text-left">
-                        <input v-model="customerRegForm.name" placeholder="Nome Completo" class="w-full border p-3 rounded-xl font-bold mb-1">
-                        <input v-model="customerRegForm.email" placeholder="E-mail" class="w-full border p-3 rounded-xl font-bold mb-1">
-                        <button @click="handleCustomerRegister" class="w-full bg-green-600 text-white py-3 rounded-xl font-black uppercase text-xs mt-2">Finalizar Cadastro</button>
-                    </div>
-                </div>
-            </section>
-
-            <section v-if="currentView === 'admin-panel'" class="space-y-8">
-                <div class="flex flex-wrap justify-center gap-4 bg-white p-6 rounded-3xl shadow-sm border border-l-8 border-green-500">
-                    <button @click="adminSubView = 'produtos'" :class="adminSubView === 'produtos' ? 'bg-blue-600 text-white' : 'bg-gray-100'" class="px-6 py-2 rounded-xl text-[10px] font-black uppercase">Gerir Estoque</button>
-                    <button @click="adminSubView = 'banners'" :class="adminSubView === 'banners' ? 'bg-blue-600 text-white' : 'bg-gray-100'" class="px-6 py-2 rounded-xl text-[10px] font-black uppercase">Gerir Banners</button>
-                    <button @click="adminSubView = 'pedidos'" :class="adminSubView === 'pedidos' ? 'bg-blue-600 text-white' : 'bg-gray-100'" class="px-6 py-2 rounded-xl text-[10px] font-black uppercase">Pedidos</button>
-                    <button @click="adminSession = null" class="bg-red-500 text-white px-6 py-2 rounded-xl text-[10px] font-black uppercase">Sair</button>
+            <section v-if="currentView === 'admin-panel' && adminSession" class="space-y-8">
+                <div class="flex flex-wrap justify-center gap-4 bg-white p-6 rounded-3xl shadow-sm border-l-8 border-green-500">
+                    <button @click="adminSubView = 'produtos'" :class="adminSubView === 'produtos' ? 'bg-blue-600 text-white' : 'bg-gray-100'" class="px-6 py-2 rounded-xl text-[10px] font-black uppercase transition">Estoque</button>
+                    <button @click="adminSubView = 'banners'" :class="adminSubView === 'banners' ? 'bg-blue-600 text-white' : 'bg-gray-100'" class="px-6 py-2 rounded-xl text-[10px] font-black uppercase transition">Banners</button>
+                    <button @click="adminSubView = 'equipe'" :class="adminSubView === 'equipe' ? 'bg-blue-600 text-white' : 'bg-gray-100'" class="px-6 py-2 rounded-xl text-[10px] font-black uppercase transition">Equipe</button>
+                    <button @click="logoutAdmin" class="bg-red-500 text-white px-6 py-2 rounded-xl text-[10px] font-black uppercase">Sair</button>
                 </div>
 
-                <div v-if="adminSubView === 'produtos'" class="bg-white p-8 rounded-3xl border shadow-xl">
-                    <h3 class="font-black uppercase text-blue-600 mb-6 border-b pb-2">Novo Produto</h3>
+                <div v-if="adminSubView === 'produtos'" class="space-y-6">
+                    <div class="bg-white p-8 rounded-3xl border shadow-xl">
+                        <h3 class="font-black uppercase text-blue-600 mb-6 border-b pb-2 italic">{{ isEditing ? 'Editar Produto' : 'Cadastrar Produto' }}</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <input v-model="prodForm.name" placeholder="Nome do Produto" class="border p-3 rounded-xl font-bold">
+                            <input v-model="prodForm.price" type="number" placeholder="Preço" class="border p-3 rounded-xl font-bold">
+                            <input v-model="prodForm.category" placeholder="Categoria" class="border p-3 rounded-xl font-bold">
+                            <input type="file" @change="e => handleUpload(e, 'prod')" class="border p-3 rounded-xl text-xs">
+                            <textarea v-model="prodForm.description" placeholder="Legenda/Descrição" class="md:col-span-2 border p-3 rounded-xl font-bold"></textarea>
+                            <div class="md:col-span-2 flex gap-2">
+                                <button @click="saveProduct" class="flex-1 bg-green-600 text-white py-4 rounded-xl font-black uppercase shadow-lg">{{ isEditing ? 'Atualizar' : 'Salvar no Banco' }}</button>
+                                <button v-if="isEditing" @click="cancelEdit" class="bg-gray-200 px-8 rounded-xl font-bold uppercase text-xs">Cancelar</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-white rounded-3xl border shadow-sm overflow-hidden overflow-x-auto">
+                        <table class="w-full text-left text-[10px] font-bold uppercase">
+                            <thead class="bg-gray-50 border-b"><tr><th class="p-4">Item</th><th class="p-4">Preço</th><th class="p-4 text-right">Ações</th></tr></thead>
+                            <tbody>
+                                <tr v-for="p in products" :key="p.id" class="border-b">
+                                    <td class="p-4 flex items-center gap-3"><img :src="p.image" class="w-10 h-10 object-contain border rounded"><span>{{ p.name }}</span></td>
+                                    <td class="p-4">R$ {{ formatPrice(p.price) }}</td>
+                                    <td class="p-4 text-right space-x-2">
+                                        <button @click="startEdit(p)" class="text-blue-600 underline">Editar</button>
+                                        <button @click="deleteProduct(p.id)" class="text-red-500 underline">Excluir</button>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div v-if="adminSubView === 'banners'" class="space-y-6">
+                    <div class="bg-white p-8 rounded-3xl border shadow-xl">
+                        <h3 class="font-black uppercase text-blue-600 mb-6 italic">Novo Banner Home</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <input v-model="bannerForm.title" placeholder="Título" class="border p-3 rounded-xl font-bold">
+                            <input v-model="bannerForm.subtitle" placeholder="Subtítulo" class="border p-3 rounded-xl font-bold">
+                            <input type="file" @change="e => handleUpload(e, 'banner')" class="md:col-span-2 border p-3 rounded-xl text-xs">
+                            <button @click="saveBanner" class="md:col-span-2 bg-blue-600 text-white py-4 rounded-xl font-black uppercase">Publicar Banner</button>
+                        </div>
+                    </div>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <input v-model="prodForm.name" placeholder="Nome do Produto" class="border p-3 rounded-xl font-bold">
-                        <input v-model="prodForm.price" type="number" placeholder="Preço" class="border p-3 rounded-xl font-bold">
-                        <select v-model="prodForm.category" class="border p-3 rounded-xl font-bold">
-                            <option v-for="cat in categories" :key="cat" :value="cat">{{ cat }}</option>
-                        </select>
-                        <input type="file" @change="e => handleUpload(e, 'prod')" class="border p-3 rounded-xl text-xs">
-                        <button @click="saveProduct" class="md:col-span-2 bg-blue-600 text-white py-4 rounded-xl font-black uppercase">Salvar na Nuvem</button>
-                    </div>
-                </div>
-
-                <div v-if="adminSubView === 'banners'" class="bg-white p-8 rounded-3xl border shadow-xl">
-                    <h3 class="font-black uppercase text-blue-600 mb-6 border-b pb-2">Novo Banner Promocional</h3>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <input v-model="bannerForm.title" placeholder="Título do Banner" class="border p-3 rounded-xl font-bold">
-                        <input v-model="bannerForm.subtitle" placeholder="Subtítulo" class="border p-3 rounded-xl font-bold">
-                        <input type="file" @change="e => handleUpload(e, 'banner')" class="border p-3 rounded-xl text-xs">
-                        <button @click="saveBanner" class="md:col-span-2 bg-blue-600 text-white py-4 rounded-xl font-black uppercase">Publicar Banner</button>
+                        <div v-for="b in banners" :key="b.id" class="bg-white p-4 rounded-2xl border shadow-sm relative">
+                            <button @click="deleteBanner(b.id)" class="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full"><i data-lucide="trash" class="w-3 h-3"></i></button>
+                            <img :src="b.image" class="h-32 w-full object-cover rounded-xl mb-2">
+                            <p class="font-black text-xs uppercase">{{ b.title }}</p>
+                        </div>
                     </div>
                 </div>
             </section>
@@ -162,10 +163,10 @@
                 return {
                     loading: false, currentView: 'store', adminSubView: 'produtos', authMode: 'login',
                     adminSession: {user: 'admin'}, customerSession: null, currentBanner: 0,
-                    selectedCategory: 'Tudo', categories: ['Tudo', 'Medicamentos', 'Beleza', 'Higiene'],
-                    prodForm: {name: '', price: 0, category: 'Medicamentos', image: ''},
+                    isEditing: false, editId: null, selectedCategory: 'Tudo',
+                    categories: ['Tudo', 'Medicamentos', 'Beleza', 'Higiene'],
+                    prodForm: {name: '', price: 0, category: 'Medicamentos', image: '', description: ''},
                     bannerForm: {title: '', subtitle: '', image: ''},
-                    customerRegForm: {name: '', email: ''}, customerLoginForm: {email: ''},
                     products: [], banners: [], orders: [], cart: []
                 }
             },
@@ -173,18 +174,15 @@
                 cartCount() { return this.cart.reduce((t, i) => t + i.qty, 0); },
                 filteredProducts() {
                     return this.selectedCategory === 'Tudo' ? this.products : this.products.filter(p => p.category === this.selectedCategory);
-                },
-                activeDeliveries() { return this.orders.filter(o => o.status === 'Em Rota'); }
+                }
             },
             methods: {
                 async fetchData() {
                     this.loading = true;
                     const { data: p } = await _supabase.from('products').select('*').order('created_at', { ascending: false });
                     const { data: b } = await _supabase.from('banners').select('*');
-                    const { data: o } = await _supabase.from('orders').select('*');
                     this.products = p || [];
                     this.banners = b || [];
-                    this.orders = o || [];
                     this.loading = false;
                 },
                 async handleUpload(e, type) {
@@ -197,28 +195,51 @@
                     reader.readAsDataURL(file);
                 },
                 async saveProduct() {
-                    await _supabase.from('products').insert([this.prodForm]);
-                    this.fetchData();
-                    alert("Produto Adicionado!");
+                    this.loading = true;
+                    if(this.isEditing) {
+                        await _supabase.from('products').update(this.prodForm).eq('id', this.editId);
+                    } else {
+                        await _supabase.from('products').insert([this.prodForm]);
+                    }
+                    this.cancelEdit();
+                    await this.fetchData();
+                    this.loading = false;
+                },
+                startEdit(p) {
+                    this.isEditing = true;
+                    this.editId = p.id;
+                    this.prodForm = { ...p };
+                },
+                cancelEdit() {
+                    this.isEditing = false;
+                    this.editId = null;
+                    this.prodForm = {name: '', price: 0, category: 'Medicamentos', image: '', description: ''};
+                },
+                async deleteProduct(id) {
+                    if(confirm("Excluir item?")) {
+                        await _supabase.from('products').delete().eq('id', id);
+                        this.fetchData();
+                    }
                 },
                 async saveBanner() {
                     await _supabase.from('banners').insert([this.bannerForm]);
-                    this.fetchData();
-                    alert("Banner Publicado!");
-                },
-                async updateOrderStatus(id, status) {
-                    await _supabase.from('orders').update({ status }).eq('id', id);
+                    this.bannerForm = {title: '', subtitle: '', image: ''};
                     this.fetchData();
                 },
+                async deleteBanner(id) {
+                    await _supabase.from('banners').delete().eq('id', id);
+                    this.fetchData();
+                },
+                formatPrice(v) { return parseFloat(v || 0).toFixed(2).replace('.', ','); },
                 addToCart(p) {
                     const item = this.cart.find(i => i.id === p.id);
                     if(item) item.qty++; else this.cart.push({...p, qty: 1});
                 },
-                formatPrice(v) { return parseFloat(v || 0).toFixed(2).replace('.', ','); }
+                logoutAdmin() { this.adminSession = null; this.currentView = 'store'; }
             },
             mounted() { 
                 this.fetchData();
-                setInterval(() => { this.currentBanner = (this.currentBanner + 1) % (this.banners.length || 1); }, 5000);
+                setInterval(() => { if(this.banners.length) this.currentBanner = (this.currentBanner + 1) % this.banners.length; }, 5000);
             }
         }).mount('#app');
     </script>
