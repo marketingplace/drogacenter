@@ -3,13 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Drogacenter | Sistema Cloud Profissional</title>
+    <title>Drogacenter Cloud | Gestão Integrada</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;900&display=swap" rel="stylesheet">
-    
     <style>
         [v-cloak] { display: none; }
         body { font-family: 'Inter', sans-serif; background-color: #f9fafb; }
@@ -17,129 +16,185 @@
         .bg-drogacenter-yellow { background-color: #facc15; }
         .text-drogacenter-blue { color: #1e3a8a; }
         .border-drogacenter-yellow { border-color: #facc15; }
-        .cart-enter-active, .cart-leave-active { transition: transform 0.3s ease; }
-        .cart-enter-from, .cart-leave-to { transform: translateX(100%); }
+        .fade-enter-active, .fade-leave-active { transition: opacity 0.5s; }
+        .fade-enter-from, .fade-leave-to { opacity: 0; }
     </style>
 </head>
 <body class="text-gray-900">
     <div id="app" v-cloak>
-        
+        <div v-if="loading" class="fixed top-0 left-0 w-full bg-blue-600 text-white text-[10px] text-center py-1 z-[100] font-bold uppercase tracking-widest animate-pulse">
+            Sincronizando com a Nuvem...
+        </div>
+
         <header class="bg-drogacenter-blue text-white shadow-lg sticky top-0 z-50 border-b-4 border-drogacenter-yellow">
             <div class="container mx-auto px-4 py-3 flex justify-between items-center">
                 <div @click="currentView = 'store'" class="flex items-center gap-2 cursor-pointer group">
                     <div class="bg-drogacenter-yellow p-2 rounded-lg"><i data-lucide="pill" class="text-blue-900 w-6 h-6"></i></div>
                     <h1 class="text-2xl font-black tracking-tighter uppercase">DROGA<span class="text-drogacenter-yellow">CENTER</span></h1>
                 </div>
-
                 <nav class="flex items-center gap-4 text-[10px] font-bold uppercase tracking-widest">
-                    <button @click="currentView = 'store'" :class="currentView === 'store' ? 'text-yellow-400' : ''">Loja</button>
-                    
-                    <button v-if="!customerSession" @click="currentView = 'customer-login'" class="hover:text-yellow-200">Minha Conta</button>
-                    <button v-else @click="currentView = 'customer-panel'" class="text-yellow-400 underline italic">Olá, {{ customerSession.name.split(' ')[0] }}</button>
-
-                    <button v-if="!adminSession" @click="currentView = 'admin-login'" class="bg-white/10 px-3 py-1 rounded">Admin</button>
-                    <button v-else @click="currentView = 'admin-panel'" class="text-yellow-400 font-black">Gestão</button>
-                    
-                    <button @click="currentView = 'entregador-view'" :class="currentView === 'entregador-view' ? 'text-yellow-400 underline font-black' : ''">Entregador</button>
-                    
-                    <button @click="showCart = true" class="relative bg-drogacenter-yellow p-2 rounded-full shadow-md transition hover:scale-110">
-                        <i data-lucide="shopping-cart" class="w-5 h-5 text-blue-900"></i>
-                        <span class="absolute -top-1 -right-1 bg-red-600 text-white text-[8px] w-5 h-5 flex items-center justify-center rounded-full font-black border-2 border-white">{{ cartCount }}</span>
+                    <button @click="currentView = 'store'">Loja</button>
+                    <button v-if="!adminSession" @click="currentView = 'admin-login'">Admin</button>
+                    <button v-else @click="currentView = 'admin-panel'" class="text-yellow-400 italic underline">Gestão</button>
+                    <button @click="currentView = 'entregador-view'">Entregador</button>
+                    <button @click="showCart = true" class="relative bg-drogacenter-yellow p-2 rounded-full text-blue-900 shadow-md">
+                        <i data-lucide="shopping-cart" class="w-5 h-5"></i>
+                        <span class="absolute -top-1 -right-1 bg-red-600 text-white text-[8px] w-5 h-5 flex items-center justify-center rounded-full">{{ cart.length }}</span>
                     </button>
                 </nav>
             </div>
         </header>
 
         <main class="container mx-auto px-4 py-8">
-            <div class="text-center py-10" v-if="loading">
-                 <p class="animate-pulse font-bold text-drogacenter-blue">Sincronizando com a Nuvem...</p>
-             </div>
+            <section v-if="currentView === 'store'" class="space-y-6">
+                <div class="bg-white p-4 rounded-2xl shadow-sm border border-blue-50 flex items-center gap-3">
+                    <i data-lucide="search" class="text-gray-400 w-5 h-5"></i>
+                    <input v-model="searchQuery" type="text" placeholder="Buscar medicamento na nuvem..." class="w-full font-bold text-sm outline-none">
+                </div>
 
-             <section v-if="currentView === 'admin-panel' && adminSession" class="space-y-8">
-                <p class="bg-green-100 text-green-700 p-2 text-[10px] rounded text-center font-bold">CONECTADO AO BANCO DE DADOS EM NUVEM</p>
-                </section>
-             
-             </main>
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <div v-for="(p, i) in filteredProducts" :key="i" class="bg-white p-4 rounded-2xl border hover:shadow-xl transition-all group">
+                        <div class="h-44 flex items-center justify-center overflow-hidden mb-4 bg-gray-50 rounded-xl relative">
+                            <img v-if="p.image" :src="p.image" class="max-h-full group-hover:scale-110 transition duration-500">
+                            <span class="absolute top-2 left-2 bg-blue-900 text-white text-[7px] px-2 py-0.5 rounded font-black uppercase">{{ p.category }}</span>
+                        </div>
+                        <h3 class="font-bold text-xs uppercase truncate">{{ p.name }}</h3>
+                        <p class="text-green-600 font-black text-lg">R$ {{ formatPrice(p.price) }}</p>
+                        <button @click="addToCart(p)" class="w-full mt-4 bg-drogacenter-blue text-white py-2 rounded-lg font-bold text-[10px] uppercase">Comprar Agora</button>
+                    </div>
+                </div>
+            </section>
+
+            <section v-if="currentView === 'admin-login'" class="max-w-md mx-auto py-20">
+                <div class="bg-white p-8 rounded-3xl shadow-2xl border text-center">
+                    <i data-lucide="lock" class="mx-auto w-10 h-10 text-drogacenter-blue mb-4"></i>
+                    <h2 class="text-xl font-black uppercase mb-6 tracking-tighter">Login Cloud</h2>
+                    <input v-model="loginForm.user" type="text" placeholder="Usuário Admin" class="w-full border p-3 rounded-xl mb-4 font-bold outline-none">
+                    <input v-model="loginForm.pass" type="password" placeholder="Senha" class="w-full border p-3 rounded-xl mb-4 font-bold outline-none">
+                    <button @click="handleAdminLogin" class="w-full bg-drogacenter-blue text-white py-3 rounded-xl font-black uppercase text-xs">Entrar no Sistema</button>
+                </div>
+            </section>
+
+            <section v-if="currentView === 'admin-panel' && adminSession" class="space-y-8">
+                <div class="flex flex-col md:flex-row justify-between items-center bg-white p-6 rounded-3xl shadow-sm border border-l-8 border-green-500">
+                    <h2 class="text-lg font-black text-drogacenter-blue uppercase italic">Gestor Cloud Ativo</h2>
+                    <div class="flex flex-wrap justify-center gap-2">
+                        <button @click="adminSubView = 'pedidos'" :class="adminSubView === 'pedidos' ? 'bg-drogacenter-blue text-white' : 'bg-gray-100'" class="px-4 py-2 rounded-xl text-[9px] font-bold uppercase">Pedidos</button>
+                        <button @click="adminSubView = 'produtos'" :class="adminSubView === 'produtos' ? 'bg-drogacenter-blue text-white' : 'bg-gray-100'" class="px-4 py-2 rounded-xl text-[9px] font-bold uppercase">Estoque</button>
+                        <button @click="logoutAdmin" class="bg-red-500 text-white px-4 py-2 rounded-xl text-[9px] font-bold uppercase">Sair</button>
+                    </div>
+                </div>
+
+                <div v-if="adminSubView === 'produtos'" class="space-y-6">
+                    <div class="bg-white p-6 rounded-3xl shadow-xl border border-blue-50">
+                        <h3 class="font-black uppercase text-xs mb-4 text-blue-600 italic">Cadastrar Medicamento na Nuvem</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <input v-model="productForm.name" type="text" placeholder="Nome" class="border p-3 rounded-xl font-bold">
+                            <input v-model="productForm.category" type="text" placeholder="Categoria" class="border p-3 rounded-xl font-bold">
+                            <input v-model="productForm.price" type="number" placeholder="Preço (Ex: 10.50)" class="border p-3 rounded-xl font-bold">
+                            <input type="file" @change="handleImageUpload" class="text-[10px] p-2 bg-gray-50 border-dashed border-2 rounded-xl">
+                            <button @click="saveProductCloud" class="md:col-span-2 bg-drogacenter-blue text-white py-4 rounded-xl font-black uppercase text-xs shadow-lg">Salvar Globalmente</button>
+                        </div>
+                    </div>
+                    <div class="bg-white rounded-3xl border shadow-sm overflow-hidden">
+                        <table class="w-full text-left font-bold text-[10px] uppercase">
+                            <thead class="bg-gray-50 border-b"><tr><th class="p-4">Item</th><th class="p-4">Preço</th><th class="p-4 text-right">Ação</th></tr></thead>
+                            <tbody>
+                                <tr v-for="p in products" :key="p.id" class="border-b hover:bg-blue-50 transition">
+                                    <td class="p-4 flex items-center gap-3"><img :src="p.image" class="w-10 h-10 object-contain bg-white border rounded"><span>{{ p.name }}</span></td>
+                                    <td class="p-4 text-green-600 font-black italic">R$ {{ formatPrice(p.price) }}</td>
+                                    <td class="p-4 text-right"><button @click="deleteProductCloud(p.id)" class="text-red-500">Excluir da Nuvem</button></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div v-if="adminSubView === 'pedidos'" class="space-y-4">
+                    <div v-for="o in orders" :key="o.id" class="bg-white p-6 rounded-3xl border shadow-sm flex justify-between items-center">
+                        <div>
+                            <span class="text-[9px] font-black uppercase px-2 py-0.5 bg-yellow-100 text-yellow-700 rounded">{{ o.status }}</span>
+                            <h4 class="font-black uppercase text-sm mt-1">{{ o.customer }}</h4>
+                            <p class="text-[9px] text-gray-400">{{ o.address }}</p>
+                        </div>
+                        <div class="flex gap-2">
+                            <button @click="updateOrderStatusCloud(o.id, 'Em Rota')" class="bg-blue-600 text-white px-4 py-2 rounded-xl text-[8px] font-bold uppercase">Despachar</button>
+                            <button @click="deleteOrderCloud(o.id)" class="text-red-400 p-2"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
     </div>
 
     <script>
         const { createApp } = Vue;
 
-        // CONFIGURAÇÃO DO SUPABASE (Substitua pelas suas chaves após criar o projeto)
-        const SUPABASE_URL = 'SUA_URL_AQUI';
-        const SUPABASE_KEY = 'SUA_KEY_ANON_AQUI';
-        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        // --- CONFIGURAÇÃO OBRIGATÓRIA SUPABASE ---
+        const SUPABASE_URL = 'COLOQUE_SUA_URL_AQUI'; 
+        const SUPABASE_KEY = 'COLOQUE_SUA_CHAVE_AQUI';
+        const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
         createApp({
             data() {
                 return {
-                    loading: false,
-                    currentView: 'store', adminSubView: 'pedidos', showCart: false,
-                    searchQuery: '', adminSession: null, customerSession: null,
-                    products: [], orders: [], allCustomers: [], deliveryMen: [], cart: [],
-                    // ... formulários e estados anteriores permanecem aqui ...
+                    loading: false, currentView: 'store', adminSubView: 'pedidos', showCart: false,
+                    searchQuery: '', adminSession: null, loginForm: { user: '', pass: '' },
+                    productForm: { name: '', price: 0, category: '', image: '' },
+                    products: [], orders: [], cart: []
+                }
+            },
+            computed: {
+                cartCount() { return this.cart.length; },
+                filteredProducts() {
+                    const q = this.searchQuery.toLowerCase();
+                    return this.products.filter(p => p.name.toLowerCase().includes(q));
                 }
             },
             methods: {
-                // FUNÇÕES DE NUVEM (SALVANDO NO AR)
+                // MÉTODOS DE CONEXÃO CLOUD
                 async fetchData() {
                     this.loading = true;
-                    // Busca produtos na nuvem
-                    let { data: products } = await supabase.from('products').select('*');
-                    this.products = products || [];
-                    
-                    // Busca pedidos na nuvem
-                    let { data: orders } = await supabase.from('orders').select('*');
-                    this.orders = orders || [];
-
-                    // Busca entregadores na nuvem
-                    let { data: delivery } = await supabase.from('delivery_men').select('*');
-                    this.deliveryMen = delivery || [];
-
+                    const { data: p } = await _supabase.from('products').select('*').order('created_at', { ascending: false });
+                    const { data: o } = await _supabase.from('orders').select('*').order('created_at', { ascending: false });
+                    this.products = p || [];
+                    this.orders = o || [];
                     this.loading = false;
                 },
-
-                async saveProduct() {
-                    // Agora salva no Supabase em vez de LocalStorage
-                    const { data, error } = await supabase
-                        .from('products')
-                        .upsert({ 
-                            name: this.productForm.name, 
-                            price: this.productForm.price,
-                            category: this.productForm.category,
-                            image: this.productForm.image 
-                        });
-                    
-                    if(!error) {
-                        alert("Salvo na Nuvem com sucesso!");
-                        this.fetchData();
-                    }
+                async saveProductCloud() {
+                    if(!this.productForm.name) return alert("Preencha o nome!");
+                    const { error } = await _supabase.from('products').insert([this.productForm]);
+                    if(!error) { alert("Publicado na Nuvem!"); this.productForm = { name:'', price:0, category:'', image:'' }; this.fetchData(); }
                 },
-
-                async confirmOrder() {
-                    const novoPedido = {
-                        customer: this.orderForm.name,
-                        address: this.orderForm.address,
-                        total: this.cartTotal,
-                        status: 'Pendente'
-                    };
-
-                    const { error } = await supabase.from('orders').insert([novoPedido]);
-                    if(!error) {
-                        alert("Pedido enviado para a nuvem!");
-                        this.cart = [];
-                        this.currentView = 'store';
-                        this.fetchData();
-                    }
+                async deleteProductCloud(id) {
+                    if(confirm("Remover da nuvem?")) { await _supabase.from('products').delete().eq('id', id); this.fetchData(); }
                 },
-
-                // [TODOS OS OUTROS MÉTODOS DE FORMATAÇÃO E LOGIN PERMANECEM]
+                async updateOrderStatusCloud(id, status) {
+                    await _supabase.from('orders').update({ status }).eq('id', id);
+                    this.fetchData();
+                },
+                handleImageUpload(e) {
+                    const file = e.target.files[0];
+                    const reader = new FileReader();
+                    reader.onload = (res) => { this.productForm.image = res.target.result; };
+                    reader.readAsDataURL(file);
+                },
+                // MÉTODOS DE UI
+                handleAdminLogin() {
+                    if(this.loginForm.user === 'admin' && this.loginForm.pass === 'farmacia123') {
+                        this.adminSession = { user: 'admin' };
+                        this.currentView = 'admin-panel';
+                    } else alert("Erro!");
+                },
+                logoutAdmin() { this.adminSession = null; this.currentView = 'store'; },
+                addToCart(p) { this.cart.push(p); alert("Adicionado!"); },
                 formatPrice(v) { return parseFloat(v).toFixed(2).replace('.', ','); }
             },
             async mounted() {
                 lucide.createIcons();
                 await this.fetchData();
-            }
+            },
+            updated() { lucide.createIcons(); }
         }).mount('#app');
     </script>
 </body>
