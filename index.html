@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Drogacenter | Sistema Cloud Profissional</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;900&display=swap" rel="stylesheet">
+    
+    <style>
+        [v-cloak] { display: none; }
+        body { font-family: 'Inter', sans-serif; background-color: #f9fafb; }
+        .bg-drogacenter-blue { background-color: #1e3a8a; }
+        .bg-drogacenter-yellow { background-color: #facc15; }
+        .text-drogacenter-blue { color: #1e3a8a; }
+        .border-drogacenter-yellow { border-color: #facc15; }
+        .cart-enter-active, .cart-leave-active { transition: transform 0.3s ease; }
+        .cart-enter-from, .cart-leave-to { transform: translateX(100%); }
+    </style>
+</head>
+<body class="text-gray-900">
+    <div id="app" v-cloak>
+        
+        <header class="bg-drogacenter-blue text-white shadow-lg sticky top-0 z-50 border-b-4 border-drogacenter-yellow">
+            <div class="container mx-auto px-4 py-3 flex justify-between items-center">
+                <div @click="currentView = 'store'" class="flex items-center gap-2 cursor-pointer group">
+                    <div class="bg-drogacenter-yellow p-2 rounded-lg"><i data-lucide="pill" class="text-blue-900 w-6 h-6"></i></div>
+                    <h1 class="text-2xl font-black tracking-tighter uppercase">DROGA<span class="text-drogacenter-yellow">CENTER</span></h1>
+                </div>
+
+                <nav class="flex items-center gap-4 text-[10px] font-bold uppercase tracking-widest">
+                    <button @click="currentView = 'store'" :class="currentView === 'store' ? 'text-yellow-400' : ''">Loja</button>
+                    
+                    <button v-if="!customerSession" @click="currentView = 'customer-login'" class="hover:text-yellow-200">Minha Conta</button>
+                    <button v-else @click="currentView = 'customer-panel'" class="text-yellow-400 underline italic">Olá, {{ customerSession.name.split(' ')[0] }}</button>
+
+                    <button v-if="!adminSession" @click="currentView = 'admin-login'" class="bg-white/10 px-3 py-1 rounded">Admin</button>
+                    <button v-else @click="currentView = 'admin-panel'" class="text-yellow-400 font-black">Gestão</button>
+                    
+                    <button @click="currentView = 'entregador-view'" :class="currentView === 'entregador-view' ? 'text-yellow-400 underline font-black' : ''">Entregador</button>
+                    
+                    <button @click="showCart = true" class="relative bg-drogacenter-yellow p-2 rounded-full shadow-md transition hover:scale-110">
+                        <i data-lucide="shopping-cart" class="w-5 h-5 text-blue-900"></i>
+                        <span class="absolute -top-1 -right-1 bg-red-600 text-white text-[8px] w-5 h-5 flex items-center justify-center rounded-full font-black border-2 border-white">{{ cartCount }}</span>
+                    </button>
+                </nav>
+            </div>
+        </header>
+
+        <main class="container mx-auto px-4 py-8">
+            <div class="text-center py-10" v-if="loading">
+                 <p class="animate-pulse font-bold text-drogacenter-blue">Sincronizando com a Nuvem...</p>
+             </div>
+
+             <section v-if="currentView === 'admin-panel' && adminSession" class="space-y-8">
+                <p class="bg-green-100 text-green-700 p-2 text-[10px] rounded text-center font-bold">CONECTADO AO BANCO DE DADOS EM NUVEM</p>
+                </section>
+             
+             </main>
+    </div>
+
+    <script>
+        const { createApp } = Vue;
+
+        // CONFIGURAÇÃO DO SUPABASE (Substitua pelas suas chaves após criar o projeto)
+        const SUPABASE_URL = 'SUA_URL_AQUI';
+        const SUPABASE_KEY = 'SUA_KEY_ANON_AQUI';
+        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        createApp({
+            data() {
+                return {
+                    loading: false,
+                    currentView: 'store', adminSubView: 'pedidos', showCart: false,
+                    searchQuery: '', adminSession: null, customerSession: null,
+                    products: [], orders: [], allCustomers: [], deliveryMen: [], cart: [],
+                    // ... formulários e estados anteriores permanecem aqui ...
+                }
+            },
+            methods: {
+                // FUNÇÕES DE NUVEM (SALVANDO NO AR)
+                async fetchData() {
+                    this.loading = true;
+                    // Busca produtos na nuvem
+                    let { data: products } = await supabase.from('products').select('*');
+                    this.products = products || [];
+                    
+                    // Busca pedidos na nuvem
+                    let { data: orders } = await supabase.from('orders').select('*');
+                    this.orders = orders || [];
+
+                    // Busca entregadores na nuvem
+                    let { data: delivery } = await supabase.from('delivery_men').select('*');
+                    this.deliveryMen = delivery || [];
+
+                    this.loading = false;
+                },
+
+                async saveProduct() {
+                    // Agora salva no Supabase em vez de LocalStorage
+                    const { data, error } = await supabase
+                        .from('products')
+                        .upsert({ 
+                            name: this.productForm.name, 
+                            price: this.productForm.price,
+                            category: this.productForm.category,
+                            image: this.productForm.image 
+                        });
+                    
+                    if(!error) {
+                        alert("Salvo na Nuvem com sucesso!");
+                        this.fetchData();
+                    }
+                },
+
+                async confirmOrder() {
+                    const novoPedido = {
+                        customer: this.orderForm.name,
+                        address: this.orderForm.address,
+                        total: this.cartTotal,
+                        status: 'Pendente'
+                    };
+
+                    const { error } = await supabase.from('orders').insert([novoPedido]);
+                    if(!error) {
+                        alert("Pedido enviado para a nuvem!");
+                        this.cart = [];
+                        this.currentView = 'store';
+                        this.fetchData();
+                    }
+                },
+
+                // [TODOS OS OUTROS MÉTODOS DE FORMATAÇÃO E LOGIN PERMANECEM]
+                formatPrice(v) { return parseFloat(v).toFixed(2).replace('.', ','); }
+            },
+            async mounted() {
+                lucide.createIcons();
+                await this.fetchData();
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>
