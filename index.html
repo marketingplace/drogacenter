@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Drogacenter | Gestão, Vendas e Cloud</title>
+    <title>Drogacenter | Saúde e Tecnologia Cloud</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
@@ -12,12 +12,12 @@
     
     <style>
         [v-cloak] { display: none; }
-        body { font-family: 'Inter', sans-serif; background-color: #f9fafb; }
+        body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; }
         .bg-drogacenter-blue { background-color: #1e3a8a; }
         .bg-drogacenter-yellow { background-color: #facc15; }
         .text-drogacenter-blue { color: #1e3a8a; }
         .border-drogacenter-yellow { border-color: #facc15; }
-        .fade-enter-active, .fade-leave-active { transition: opacity 0.8s ease; }
+        .fade-enter-active, .fade-leave-active { transition: opacity 0.5s ease; }
         .fade-enter-from, .fade-leave-to { opacity: 0; }
         .cart-enter-active, .cart-leave-active { transition: transform 0.3s ease; }
         .cart-enter-from, .cart-leave-to { transform: translateX(100%); }
@@ -27,116 +27,177 @@
 <body class="text-gray-900">
     <div id="app" v-cloak>
         
-        <div v-if="loading" class="fixed top-0 left-0 w-full bg-blue-600 text-white text-[10px] text-center py-1 z-[150] font-bold uppercase animate-pulse">
-            Sincronizando com a Nuvem...
-        </div>
+        <div v-if="loading" class="fixed top-0 left-0 w-full bg-blue-600 text-white text-[10px] text-center py-1 z-[200] font-bold uppercase animate-pulse">Sincronizando...</div>
 
-        <header class="bg-drogacenter-blue text-white shadow-lg sticky top-0 z-50 border-b-4 border-drogacenter-yellow">
-            <div class="container mx-auto px-4 py-3 flex justify-between items-center">
-                <div @click="currentView = 'store'; selectedCategory = 'Tudo'" class="flex items-center gap-2 cursor-pointer group">
-                    <div class="bg-drogacenter-yellow p-2 rounded-lg"><i data-lucide="pill" class="text-blue-900 w-6 h-6"></i></div>
-                    <h1 class="text-2xl font-black tracking-tighter uppercase">DROGA<span class="text-drogacenter-yellow">CENTER</span></h1>
+        <header class="bg-white border-b sticky top-0 z-[100] shadow-sm">
+            <div class="container mx-auto px-4 py-4 flex flex-wrap items-center justify-between gap-4">
+                <div @click="currentView = 'store'; selectedCategory = 'Tudo'" class="flex items-center gap-2 cursor-pointer">
+                    <div class="bg-drogacenter-blue p-2 rounded-lg text-white"><i data-lucide="pill" class="w-6 h-6"></i></div>
+                    <h1 class="text-2xl font-black tracking-tighter text-drogacenter-blue">DROGA<span class="text-green-600">CENTER</span></h1>
                 </div>
 
-                <nav class="flex items-center gap-4">
-                    <button @click="currentView = 'admin-panel'" v-if="adminSession" class="text-[10px] font-bold uppercase bg-white/10 px-3 py-1 rounded">Gestão Admin</button>
-                    <button @click="showCart = true" class="relative bg-drogacenter-yellow p-2 rounded-full shadow-md transition hover:scale-110">
-                        <i data-lucide="shopping-cart" class="w-5 h-5 text-blue-900"></i>
-                        <span class="absolute -top-1 -right-1 bg-red-600 text-white text-[8px] w-5 h-5 flex items-center justify-center rounded-full font-black border-2 border-white">{{ cartCount }}</span>
+                <div class="flex-1 max-w-2xl relative group">
+                    <input v-model="searchQuery" type="text" placeholder="O que você está procurando?" 
+                           class="w-full bg-gray-100 border-none rounded-full py-3 px-6 pr-12 font-medium focus:ring-2 focus:ring-blue-600 transition-all outline-none">
+                    <button class="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 group-hover:text-blue-600 transition">
+                        <i data-lucide="search" class="w-5 h-5"></i>
                     </button>
-                </nav>
-            </div>
-            
-            <div class="bg-blue-900/50 py-2 border-t border-white/10">
-                <div class="container mx-auto px-4 flex gap-6 text-[10px] font-bold uppercase tracking-widest overflow-x-auto scrollbar-hide">
-                    <button @click="currentView = 'store'; selectedCategory = 'Tudo'" :class="currentView === 'store' ? 'text-yellow-400' : ''" class="hover:text-yellow-400 whitespace-nowrap">Loja (Departamentos)</button>
-                    <div v-if="!customerSession" class="flex gap-4">
-                        <button @click="currentView = 'customer-login'; authMode = 'login'" class="hover:text-yellow-400 whitespace-nowrap">Entrar</button>
-                        <button @click="currentView = 'customer-login'; authMode = 'register'" class="hover:text-yellow-400 whitespace-nowrap">Cadastro</button>
+                </div>
+
+                <div class="flex items-center gap-6 text-gray-600">
+                    <div @click="currentView = 'customer-login'" class="cursor-pointer flex flex-col items-center group">
+                        <i data-lucide="user" class="w-6 h-6 group-hover:text-blue-600"></i>
+                        <span class="text-[10px] font-bold uppercase tracking-tighter">{{ customerSession ? customerSession.name.split(' ')[0] : 'Olá, entre' }}</span>
                     </div>
-                    <button v-else @click="currentView = 'customer-panel'" class="text-yellow-400 italic underline whitespace-nowrap">Minha Conta ({{ customerSession.name.split(' ')[0] }})</button>
-                    <button @click="currentView = 'contact-form'" :class="currentView === 'contact-form' ? 'text-yellow-400' : ''" class="hover:text-yellow-400 whitespace-nowrap">Contato</button>
-                    <button @click="currentView = 'entregador-view'" class="ml-auto opacity-50 hover:opacity-100">Entregador</button>
+                    <div @click="currentView = 'customer-panel'" class="cursor-pointer flex flex-col items-center group">
+                        <i data-lucide="package" class="w-6 h-6 group-hover:text-blue-600"></i>
+                        <span class="text-[10px] font-bold uppercase tracking-tighter">Pedidos</span>
+                    </div>
+                    <div @click="showCart = true" class="cursor-pointer flex flex-col items-center group relative">
+                        <div class="bg-blue-900 text-white p-2 rounded-full shadow-md">
+                            <i data-lucide="shopping-basket" class="w-6 h-6"></i>
+                            <span class="absolute -top-1 -right-1 bg-red-600 text-white text-[9px] w-5 h-5 flex items-center justify-center rounded-full font-black border-2 border-white">{{ cartCount }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-gray-50 border-t py-2">
+                <div class="container mx-auto px-4 flex flex-wrap items-center gap-6">
+                    <div class="flex items-center gap-2 text-blue-600 cursor-pointer border-r pr-4" @click="promptCep">
+                        <i data-lucide="map-pin" class="w-4 h-4"></i>
+                        <span class="text-[11px] font-bold">{{ userAddress || 'Inserir CEP' }}</span>
+                    </div>
+                    
+                    <nav class="flex gap-6 text-[11px] font-black uppercase tracking-wider text-gray-500 overflow-x-auto scrollbar-hide">
+                        <button @click="selectedCategory = 'Ofertas'" class="text-red-600 flex items-center gap-1"><i data-lucide="percent" class="w-3 h-3"></i> Suas Ofertas</button>
+                        <button @click="selectedCategory = 'Medicamentos'" class="hover:text-blue-600">Medicamentos</button>
+                        <button @click="selectedCategory = 'Higiene'" class="hover:text-blue-600">Higiene</button>
+                        <button @click="selectedCategory = 'Beleza'" class="hover:text-blue-600">Beleza</button>
+                        <button @click="currentView = 'admin-panel'" v-if="adminSession" class="text-blue-900 italic">Administrador</button>
+                        <button @click="currentView = 'entregador-view'" class="ml-auto">Entregador</button>
+                    </nav>
                 </div>
             </div>
         </header>
 
-        <main class="container mx-auto px-4 py-8">
+        <main class="container mx-auto px-4 py-6">
             
-            <section v-if="currentView === 'store'" class="space-y-6">
-                <div v-if="banners.length" class="relative h-48 md:h-64 rounded-3xl overflow-hidden shadow-lg bg-drogacenter-blue">
+            <section v-if="currentView === 'store'" class="space-y-8">
+                <div class="relative h-64 md:h-80 rounded-3xl overflow-hidden shadow-xl bg-gradient-to-r from-blue-900 to-blue-600">
                     <transition name="fade" mode="out-in">
-                        <div :key="currentBanner" class="absolute inset-0 w-full h-full flex items-center justify-between px-10">
-                            <div class="text-white max-w-lg z-10">
-                                <h2 class="text-2xl md:text-4xl font-black uppercase italic leading-tight">{{ banners[currentBanner].title }}</h2>
-                                <p class="text-yellow-400 font-bold uppercase text-[10px] mt-2 tracking-widest">{{ banners[currentBanner].subtitle }}</p>
+                        <div :key="currentBanner" class="absolute inset-0 w-full h-full flex items-center px-12">
+                            <div class="text-white max-w-md z-10">
+                                <span class="bg-red-600 text-[10px] font-black px-3 py-1 rounded-full uppercase mb-4 inline-block tracking-widest">Oferta Exclusiva</span>
+                                <h2 class="text-4xl md:text-5xl font-black uppercase italic leading-none mb-2">{{ banners[currentBanner]?.title }}</h2>
+                                <p class="text-yellow-400 font-bold uppercase text-sm tracking-widest">{{ banners[currentBanner]?.subtitle }}</p>
                             </div>
-                            <img v-if="banners[currentBanner].image" :src="banners[currentBanner].image" class="absolute right-0 h-full w-1/2 object-cover opacity-60">
+                            <img v-if="banners[currentBanner]?.image" :src="banners[currentBanner]?.image" class="absolute right-0 h-full w-2/3 object-cover opacity-80 mask-gradient">
                         </div>
                     </transition>
                 </div>
 
-                <div class="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-                    <button v-for="cat in categories" :key="cat" @click="selectedCategory = cat" 
-                        :class="selectedCategory === cat ? 'bg-drogacenter-blue text-white' : 'bg-white text-gray-400 border'"
-                        class="px-4 py-2 rounded-full text-[9px] font-black uppercase tracking-widest whitespace-nowrap transition">
-                        {{ cat }}
-                    </button>
-                </div>
-
-                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                    <div v-for="p in filteredProducts" :key="p.id" class="bg-white p-4 rounded-2xl border hover:shadow-xl transition-all group">
-                        <div class="h-44 flex items-center justify-center overflow-hidden mb-4 bg-gray-50 rounded-xl relative p-2">
-                            <img :src="p.image" class="max-h-full group-hover:scale-105 transition duration-500">
-                            <div class="absolute top-2 left-2 bg-drogacenter-blue text-white text-[7px] font-black px-2 py-0.5 rounded uppercase">{{ p.category }}</div>
+                <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-6">
+                    <div v-for="p in filteredProducts" :key="p.id" class="bg-white p-4 rounded-3xl border hover:shadow-2xl transition-all group flex flex-col">
+                        <div class="h-48 flex items-center justify-center overflow-hidden mb-4 relative bg-gray-50 rounded-2xl">
+                            <img :src="p.image" class="max-h-full group-hover:scale-110 transition duration-500">
+                            <button @click="addToCart(p)" class="absolute bottom-2 right-2 bg-drogacenter-blue text-white p-3 rounded-full shadow-lg opacity-0 group-hover:opacity-100 translate-y-4 group-hover:translate-y-0 transition-all">
+                                <i data-lucide="plus" class="w-5 h-5"></i>
+                            </button>
                         </div>
-                        <h3 class="font-bold text-xs uppercase truncate">{{ p.name }}</h3>
-                        <p class="text-green-600 font-black text-lg">R$ {{ formatPrice(p.price) }}</p>
-                        <button @click="addToCart(p)" class="bg-drogacenter-blue text-white p-2 rounded-lg mt-2 w-full font-bold uppercase text-[10px] hover:bg-blue-900 transition">Comprar</button>
+                        <p class="text-[9px] font-black text-gray-400 uppercase mb-1">{{ p.category }}</p>
+                        <h3 class="font-bold text-xs uppercase text-gray-800 line-clamp-2 h-8 leading-tight">{{ p.name }}</h3>
+                        <div class="mt-4">
+                            <p class="text-[10px] text-gray-400 line-through">De: R$ {{ formatPrice(p.price * 1.2) }}</p>
+                            <p class="text-xl font-black text-blue-900">R$ {{ formatPrice(p.price) }}</p>
+                        </div>
+                        <button @click="addToCart(p)" class="w-full mt-4 border-2 border-blue-900 text-blue-900 py-2 rounded-full font-black text-[10px] uppercase hover:bg-blue-900 hover:text-white transition">Comprar</button>
                     </div>
                 </div>
             </section>
 
-            <section v-if="currentView === 'customer-panel'" class="max-w-4xl mx-auto space-y-6">
-                <div class="bg-white p-8 rounded-3xl shadow-sm border border-l-8 border-drogacenter-yellow flex justify-between items-center">
+            <section v-if="currentView === 'customer-login'" class="max-w-md mx-auto py-12">
+                <div class="bg-white p-10 rounded-[3rem] shadow-2xl border text-center">
+                    <h2 class="text-3xl font-black text-blue-900 uppercase mb-8 italic tracking-tighter">{{ authMode === 'login' ? 'Bem-vindo!' : 'Criar Conta' }}</h2>
+                    
+                    <div class="space-y-4">
+                        <div v-if="authMode === 'register'" class="space-y-4">
+                            <input v-model="customerRegForm.name" placeholder="Nome Completo" class="w-full bg-gray-100 border-none rounded-2xl p-4 font-bold outline-none">
+                            <input v-model="customerRegForm.cpf" placeholder="CPF (Somente números)" class="w-full bg-gray-100 border-none rounded-2xl p-4 font-bold outline-none">
+                        </div>
+                        <input v-model="customerLoginForm.email" placeholder="E-mail" class="w-full bg-gray-100 border-none rounded-2xl p-4 font-bold outline-none">
+                        
+                        <button v-if="authMode === 'login'" @click="handleCustomerLogin" class="w-full bg-blue-900 text-white py-4 rounded-2xl font-black uppercase text-xs shadow-lg">Entrar</button>
+                        <button v-else @click="handleCustomerRegister" class="w-full bg-green-600 text-white py-4 rounded-2xl font-black uppercase text-xs shadow-lg">Cadastrar</button>
+                        
+                        <button @click="authMode = authMode === 'login' ? 'register' : 'login'" class="text-[10px] uppercase font-black text-gray-400 underline">
+                            {{ authMode === 'login' ? 'Não tenho cadastro' : 'Já sou cliente' }}
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <section v-if="currentView === 'customer-panel' && customerSession" class="max-w-4xl mx-auto space-y-6">
+                <div class="bg-white p-8 rounded-3xl shadow-sm flex justify-between items-center border-l-8 border-green-500">
                     <div>
-                        <h2 class="text-xl font-black text-drogacenter-blue uppercase">Olá, {{ customerSession?.name }}</h2>
-                        <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Acompanhe seus pedidos e dados</p>
+                        <h2 class="text-2xl font-black text-blue-900 uppercase italic leading-none">Meus Pedidos</h2>
+                        <p class="text-gray-400 text-xs font-bold uppercase mt-2">Histórico de compras de {{ customerSession.name }}</p>
                     </div>
-                    <button @click="customerSession = null; currentView = 'store'" class="bg-red-500 text-white px-4 py-2 rounded-xl text-[9px] font-bold uppercase">Sair</button>
+                    <button @click="customerSession = null; currentView = 'store'" class="bg-red-100 text-red-600 px-6 py-2 rounded-full font-black text-[10px] uppercase">Sair</button>
                 </div>
-                
-                <div class="bg-white p-6 rounded-3xl shadow-sm border">
-                    <h3 class="font-black uppercase text-xs text-blue-900 mb-6 border-b pb-2 italic">Histórico de Compras</h3>
-                    <div v-if="customerOrders.length" class="space-y-4">
-                        <div v-for="order in customerOrders" :key="order.id" class="flex justify-between items-center p-4 bg-gray-50 rounded-2xl">
-                            <div>
-                                <p class="text-[9px] font-black text-gray-400 uppercase">{{ new Date(order.created_at).toLocaleDateString() }}</p>
-                                <p class="text-xs font-bold text-blue-900">Pedido #{{ order.id.slice(0,5).toUpperCase() }}</p>
-                            </div>
-                            <div class="text-right">
-                                <p class="font-black text-green-600">R$ {{ formatPrice(order.total) }}</p>
-                                <span class="text-[8px] font-black uppercase text-blue-500">{{ order.status }}</span>
-                            </div>
+
+                <div v-if="customerOrders.length" class="grid gap-4">
+                    <div v-for="order in customerOrders" :key="order.id" class="bg-white p-6 rounded-3xl border shadow-sm flex justify-between items-center">
+                        <div>
+                            <span class="text-[9px] font-black uppercase px-3 py-1 rounded-full" :class="order.status === 'Entregue' ? 'bg-green-100 text-green-600' : 'bg-blue-100 text-blue-600'">{{ order.status }}</span>
+                            <p class="mt-2 font-bold text-blue-900 uppercase">Pedido #{{ order.id.slice(0,8) }}</p>
+                            <p class="text-[10px] text-gray-400 font-bold uppercase">{{ new Date(order.created_at).toLocaleDateString() }}</p>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-2xl font-black text-green-600">R$ {{ formatPrice(order.total) }}</p>
                         </div>
                     </div>
-                    <div v-else class="text-center py-10 text-gray-400 text-xs font-bold uppercase">Nenhum pedido encontrado.</div>
                 </div>
-            </section>
-
-            <section v-if="currentView === 'contact-form'" class="max-w-xl mx-auto py-10">
-                <div class="bg-white p-8 rounded-3xl shadow-xl border">
-                    <h2 class="text-xl font-black text-drogacenter-blue uppercase mb-6 italic border-b-2 border-yellow-400 w-fit">Contato</h2>
-                    <form @submit.prevent="alert('Sua mensagem foi enviada! Responderemos em breve.')" class="space-y-4">
-                        <input type="text" placeholder="Nome Completo" class="w-full border p-4 rounded-xl font-bold outline-none focus:border-blue-600" required>
-                        <input type="email" placeholder="Seu Melhor E-mail" class="w-full border p-4 rounded-xl font-bold outline-none focus:border-blue-600" required>
-                        <textarea placeholder="No que podemos ajudar?" class="w-full border p-4 rounded-xl font-bold outline-none focus:border-blue-600" rows="4" required></textarea>
-                        <button type="submit" class="w-full bg-drogacenter-blue text-white py-4 rounded-xl font-black uppercase text-xs shadow-lg hover:bg-blue-900 transition-all">Enviar Mensagem</button>
-                    </form>
+                <div v-else class="text-center py-20 bg-white rounded-3xl border-2 border-dashed">
+                    <p class="text-gray-400 font-bold uppercase text-xs">Você ainda não tem pedidos realizados.</p>
                 </div>
             </section>
 
             </main>
+
+        <transition name="cart">
+            <div v-if="showCart" class="fixed inset-0 z-[200] flex justify-end">
+                <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" @click="showCart = false"></div>
+                <div class="relative w-full max-w-md bg-white h-full shadow-2xl flex flex-col">
+                    <div class="p-8 bg-blue-900 text-white flex justify-between items-center">
+                        <h2 class="text-xl font-black uppercase italic tracking-tighter">Meu Carrinho</h2>
+                        <button @click="showCart = false" class="hover:rotate-90 transition"><i data-lucide="x"></i></button>
+                    </div>
+                    <div class="flex-1 overflow-y-auto p-8 space-y-6">
+                        <div v-for="item in cart" :key="item.id" class="flex gap-4 border-b pb-6 items-center">
+                            <img :src="item.image" class="w-20 h-20 object-contain border rounded-2xl bg-gray-50 p-2">
+                            <div class="flex-1">
+                                <h4 class="font-black text-xs uppercase text-blue-900 line-clamp-1">{{ item.name }}</h4>
+                                <p class="text-green-600 font-black text-lg">R$ {{ formatPrice(item.price) }}</p>
+                                <div class="flex items-center gap-3 mt-2">
+                                    <button @click="updateQty(item.id, -1)" class="w-6 h-6 rounded-full bg-gray-100 flex items-center justify-center font-black">-</button>
+                                    <span class="text-sm font-black">{{ item.qty }}</span>
+                                    <button @click="updateQty(item.id, 1)" class="w-6 h-6 rounded-full bg-gray-100 flex items-center justify-center font-black">+</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div v-if="cart.length" class="p-8 border-t bg-gray-50 rounded-t-[3rem]">
+                        <div class="flex justify-between items-center mb-6">
+                            <span class="font-black text-gray-400 text-xs uppercase">Subtotal</span>
+                            <span class="text-3xl font-black text-blue-900">R$ {{ formatPrice(cartTotal) }}</span>
+                        </div>
+                        <button @click="goToCheckout" class="w-full bg-blue-900 text-white py-5 rounded-3xl font-black uppercase text-xs tracking-widest shadow-xl hover:bg-blue-800 transition">Finalizar Compra</button>
+                    </div>
+                </div>
+            </div>
+        </transition>
+
     </div>
 
     <script>
@@ -148,9 +209,12 @@
         createApp({
             data() {
                 return {
-                    loading: false, currentView: 'store', adminSubView: 'produtos', showCart: false, authMode: 'login',
-                    adminSession: {user: 'admin'}, customerSession: null, currentBanner: 0,
-                    selectedCategory: 'Tudo', categories: ['Tudo', 'Medicamentos', 'Beleza', 'Higiene', 'Infantil'],
+                    loading: false, currentView: 'store', authMode: 'login', showCart: false,
+                    searchQuery: '', selectedCategory: 'Tudo', userAddress: '',
+                    adminSession: null, customerSession: null, currentBanner: 0,
+                    categories: ['Tudo', 'Ofertas', 'Medicamentos', 'Higiene', 'Beleza', 'Infantil'],
+                    customerLoginForm: { email: '' },
+                    customerRegForm: { name: '', email: '', cpf: '' },
                     products: [], banners: [], orders: [], cart: []
                 }
             },
@@ -158,17 +222,15 @@
                 cartCount() { return this.cart.reduce((t, i) => t + i.qty, 0); },
                 cartTotal() { return this.cart.reduce((t, i) => t + (i.price * i.qty), 0); },
                 filteredProducts() {
-                    if (this.selectedCategory === 'Tudo') return this.products;
-                    return this.products.filter(p => p.category === this.selectedCategory);
+                    let list = this.products;
+                    if (this.selectedCategory === 'Ofertas') list = list.filter(p => p.onSale);
+                    else if (this.selectedCategory !== 'Tudo') list = list.filter(p => p.category === this.selectedCategory);
+                    if (this.searchQuery) list = list.filter(p => p.name.toLowerCase().includes(this.searchQuery.toLowerCase()));
+                    return list;
                 },
                 customerOrders() {
                     if (!this.customerSession) return [];
                     return this.orders.filter(o => o.customer === this.customerSession.name);
-                },
-                financialData() {
-                    const delivered = this.orders.filter(o => o.status === 'Entregue');
-                    const total = delivered.reduce((acc, o) => acc + o.total, 0);
-                    return { totalRevenue: total, totalOrders: delivered.length, averageTicket: delivered.length ? (total / delivered.length) : 0 }
                 }
             },
             methods: {
@@ -181,27 +243,45 @@
                         this.products = p || [];
                         this.banners = b || [];
                         this.orders = o || [];
-                    } catch (e) { console.error("Erro na nuvem:", e); }
+                    } catch (e) { console.error(e); }
                     this.loading = false;
                     this.$nextTick(() => lucide.createIcons());
                 },
+                async promptCep() {
+                    const cep = prompt("Digite seu CEP para entrega:");
+                    if (cep && cep.length === 8) {
+                        try {
+                            const res = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+                            const data = await res.json();
+                            if (!data.erro) {
+                                this.userAddress = `${data.logradouro}, ${data.bairro} - ${data.localidade}`;
+                                alert(`Entregando em: ${this.userAddress}`);
+                            }
+                        } catch (e) { alert("CEP não encontrado."); }
+                    }
+                },
                 async handleCustomerLogin() {
                     const { data } = await _supabase.from('customers').select('*').eq('email', this.customerLoginForm.email).single();
-                    if(data) { this.customerSession = data; this.currentView = 'store'; } else alert("Conta não encontrada!");
+                    if(data) { this.customerSession = data; this.currentView = 'store'; } else alert("Conta não encontrada.");
                 },
-                async confirmPixPayment() {
-                    this.loading = true;
-                    const orderData = { customer: this.customerSession?.name || 'Visitante', total: this.cartTotal, status: 'Pendente', items: this.cart };
-                    await _supabase.from('orders').insert([orderData]);
-                    alert("Aguardando confirmação do pagamento!");
-                    this.cart = []; this.currentView = 'store'; this.fetchData();
-                    this.loading = false;
+                async handleCustomerRegister() {
+                    const { error } = await _supabase.from('customers').insert([this.customerRegForm]);
+                    if(!error) { alert("Cadastro realizado!"); this.authMode = 'login'; } else alert("Erro no cadastro.");
+                },
+                updateQty(id, val) {
+                    const item = this.cart.find(i => i.id === id);
+                    if(item) {
+                        item.qty += val;
+                        if(item.qty <= 0) this.cart = this.cart.filter(i => i.id !== id);
+                    }
                 },
                 addToCart(p) {
-                    const item = this.cart.find(i => i.id === p.id);
-                    if(item) item.qty++; else this.cart.push({...p, qty: 1});
+                    const existing = this.cart.find(i => i.id === p.id);
+                    if(existing) existing.qty++;
+                    else this.cart.push({...p, qty: 1});
                     this.showCart = true;
                 },
+                goToCheckout() { this.showCart = false; this.currentView = 'checkout-pix'; },
                 formatPrice(v) { return parseFloat(v || 0).toFixed(2).replace('.', ','); }
             },
             mounted() { 
