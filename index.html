@@ -28,7 +28,7 @@
 <body class="text-gray-900">
     <div id="app" v-cloak>
         
-        <div v-if="loading" class="fixed top-0 left-0 w-full bg-blue-600 text-white text-[10px] text-center py-1 z-[200] font-bold uppercase animate-pulse">Sincronizando...</div>
+        <div v-if="loading" class="fixed top-0 left-0 w-full bg-blue-600 text-white text-[10px] text-center py-1 z-[200] font-bold uppercase animate-pulse">Sincronizando Dados Cloud...</div>
 
         <header class="bg-white border-b sticky top-0 z-[100] shadow-sm">
             <div class="container mx-auto px-4 py-4 flex flex-wrap items-center justify-between gap-4">
@@ -87,7 +87,7 @@
                     <transition name="fade" mode="out-in">
                         <div :key="currentBanner" class="absolute inset-0 w-full h-full flex items-center px-12">
                             <div class="text-white max-w-md z-10">
-                                <span class="bg-red-600 text-[10px] font-black px-3 py-1 rounded-full uppercase mb-4 inline-block tracking-widest">Oferta Especial</span>
+                                <span class="bg-red-600 text-[10px] font-black px-3 py-1 rounded-full uppercase mb-4 inline-block tracking-widest">Destaque</span>
                                 <h2 class="text-4xl md:text-5xl font-black uppercase italic leading-none mb-2">{{ banners[currentBanner]?.title }}</h2>
                                 <p class="text-yellow-400 font-bold uppercase text-sm tracking-widest">{{ banners[currentBanner]?.subtitle }}</p>
                             </div>
@@ -112,22 +112,42 @@
                 </div>
             </section>
 
-            <section v-if="currentView === 'admin-panel'" class="space-y-8">
+            <section v-if="currentView === 'admin-panel' && adminSession" class="space-y-8">
                 <div class="bg-white p-8 rounded-3xl shadow-sm border border-l-8 border-blue-600 flex justify-between items-center">
-                    <h2 class="text-2xl font-black text-blue-900 uppercase italic italic">Gestão Central</h2>
-                    <div class="flex gap-4">
+                    <h2 class="text-2xl font-black text-blue-900 uppercase italic">Gestão Central</h2>
+                    <div class="flex gap-3">
                         <button @click="adminSubView = 'produtos'" :class="adminSubView === 'produtos' ? 'bg-blue-600 text-white' : 'bg-gray-100'" class="px-6 py-2 rounded-xl text-[10px] font-black uppercase">Estoque</button>
-                        <button @click="adminSubView = 'pedidos'" :class="adminSubView === 'pedidos' ? 'bg-blue-600 text-white' : 'bg-gray-100'" class="px-6 py-2 rounded-xl text-[10px] font-black uppercase">Vendas</button>
+                        <button @click="adminSubView = 'banners'" :class="adminSubView === 'banners' ? 'bg-blue-600 text-white' : 'bg-gray-100'" class="px-6 py-2 rounded-xl text-[10px] font-black uppercase">Banners</button>
+                        <button @click="adminSubView = 'usuarios'" :class="adminSubView === 'usuarios' ? 'bg-blue-600 text-white' : 'bg-gray-100'" class="px-6 py-2 rounded-xl text-[10px] font-black uppercase">Equipe</button>
                         <button @click="logoutAdmin" class="bg-red-500 text-white px-6 py-2 rounded-xl text-[10px] font-black uppercase">Sair</button>
                     </div>
                 </div>
                 
-                <div v-if="adminSubView === 'produtos'" class="bg-white p-6 rounded-3xl border shadow-sm">
-                    <h3 class="font-black uppercase text-xs mb-4 text-blue-600 italic">Lista de Produtos Cloud</h3>
+                <div v-if="adminSubView === 'produtos'" class="bg-white p-8 rounded-3xl border shadow-xl animate-fade-in">
+                    <h3 class="font-black uppercase text-blue-600 mb-6 border-b pb-2 italic">{{ isEditing ? 'Editar Produto' : 'Cadastrar Novo Medicamento' }}</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+                        <input v-model="prodForm.name" placeholder="Nome do Produto" class="border p-3 rounded-xl font-bold outline-none">
+                        <input v-model="prodForm.price" type="number" placeholder="Preço (R$)" class="border p-3 rounded-xl font-bold outline-none">
+                        <select v-model="prodForm.category" class="border p-3 rounded-xl font-bold outline-none bg-white">
+                            <option v-for="cat in categories.filter(c => c !== 'Tudo')" :key="cat" :value="cat">{{ cat }}</option>
+                        </select>
+                        <input type="file" @change="e => handleUpload(e, 'prod')" class="border p-3 rounded-xl text-xs outline-none">
+                        <textarea v-model="prodForm.description" placeholder="Legenda do Produto" class="md:col-span-2 border p-3 rounded-xl font-bold outline-none"></textarea>
+                        <button @click="saveProduct" class="md:col-span-2 bg-blue-600 text-white py-4 rounded-xl font-black uppercase shadow-lg hover:bg-blue-700 transition">Sincronizar com Estoque</button>
+                    </div>
                     <div class="overflow-x-auto">
                         <table class="w-full text-left text-xs font-bold uppercase">
-                            <thead class="border-b"><tr><th class="p-4">Item</th><th class="p-4">Preço</th><th class="p-4">Ações</th></tr></thead>
-                            <tbody><tr v-for="p in products" :key="p.id" class="border-b"><td class="p-4">{{p.name}}</td><td class="p-4">R$ {{formatPrice(p.price)}}</td><td class="p-4"><button class="text-blue-600">Editar</button></td></tr></tbody>
+                            <thead class="bg-gray-50 border-b"><tr><th class="p-4">Item</th><th class="p-4">Categoria</th><th class="p-4 text-right">Ações</th></tr></thead>
+                            <tbody>
+                                <tr v-for="p in products" :key="p.id" class="border-b hover:bg-gray-50">
+                                    <td class="p-4 flex items-center gap-3"><img :src="p.image" class="w-10 h-10 object-contain border rounded">{{p.name}}</td>
+                                    <td class="p-4"><span class="bg-blue-100 text-blue-600 px-2 py-1 rounded">{{p.category}}</span></td>
+                                    <td class="p-4 text-right space-x-2">
+                                        <button @click="startEdit(p)" class="text-blue-600 underline">Editar</button>
+                                        <button @click="deleteProduct(p.id)" class="text-red-500 underline">Excluir</button>
+                                    </td>
+                                </tr>
+                            </tbody>
                         </table>
                     </div>
                 </div>
@@ -135,15 +155,16 @@
 
             <section v-if="currentView === 'customer-login'" class="max-w-md mx-auto py-12">
                 <div class="bg-white p-10 rounded-[3rem] shadow-2xl border text-center">
-                    <h2 class="text-2xl font-black text-blue-900 uppercase mb-8 italic tracking-tighter">{{ authMode === 'login' ? 'Acessar Conta' : 'Novo Cadastro' }}</h2>
+                    <h2 class="text-2xl font-black text-blue-900 uppercase mb-8 italic tracking-tighter">{{ authMode === 'login' ? 'Identificação' : 'Criar minha Conta' }}</h2>
                     <div class="space-y-4">
                         <div v-if="authMode === 'register'" class="space-y-4">
                             <input v-model="customerRegForm.name" placeholder="Nome Completo" class="w-full bg-gray-50 rounded-2xl p-4 font-bold outline-none border focus:border-blue-600">
+                            <input v-model="customerRegForm.cpf" placeholder="CPF (Somente números)" class="w-full bg-gray-50 rounded-2xl p-4 font-bold outline-none border focus:border-blue-600">
                         </div>
                         <input v-model="customerLoginForm.email" placeholder="Seu E-mail" class="w-full bg-gray-50 rounded-2xl p-4 font-bold outline-none border focus:border-blue-600">
                         <button @click="authMode === 'login' ? handleCustomerLogin() : handleCustomerRegister()" 
-                                class="w-full bg-blue-900 text-white py-4 rounded-2xl font-black uppercase text-xs shadow-lg">{{ authMode === 'login' ? 'Entrar' : 'Cadastrar' }}</button>
-                        <button @click="authMode = authMode === 'login' ? 'register' : 'login'" class="text-[10px] font-black text-gray-400 underline uppercase tracking-widest">{{ authMode === 'login' ? 'Não tenho cadastro' : 'Já sou cliente' }}</button>
+                                class="w-full bg-blue-900 text-white py-4 rounded-2xl font-black uppercase text-xs shadow-lg">{{ authMode === 'login' ? 'Entrar Agora' : 'Finalizar Cadastro' }}</button>
+                        <button @click="authMode = authMode === 'login' ? 'register' : 'login'" class="text-[10px] font-black text-gray-400 underline uppercase tracking-widest">{{ authMode === 'login' ? 'Quero me cadastrar' : 'Já sou cliente' }}</button>
                     </div>
                 </div>
             </section>
@@ -155,23 +176,28 @@
                 <div class="relative w-full max-w-md bg-white h-full shadow-2xl flex flex-col">
                     <div class="p-8 bg-blue-900 text-white flex justify-between items-center">
                         <h2 class="text-xl font-black uppercase italic tracking-tighter">Minha Cesta</h2>
-                        <button @click="showCart = false"><i data-lucide="x"></i></button>
+                        <button @click="showCart = false" class="hover:rotate-90 transition"><i data-lucide="x"></i></button>
                     </div>
                     <div class="flex-1 overflow-y-auto p-8 space-y-6">
                         <div v-for="item in cart" :key="item.id" class="flex gap-4 border-b pb-6 items-center">
                             <img :src="item.image" class="w-20 h-20 object-contain border rounded-2xl p-2 bg-gray-50">
                             <div class="flex-1">
-                                <h4 class="font-black text-[10px] uppercase text-blue-900 line-clamp-1">{{ item.name }}</h4>
+                                <h4 class="font-black text-[10px] uppercase text-blue-900 leading-tight">{{ item.name }}</h4>
                                 <p class="text-green-600 font-black text-lg">R$ {{ formatPrice(item.price) }}</p>
+                                <div class="flex items-center gap-3 mt-2">
+                                    <button @click="updateQty(item.id, -1)" class="w-6 h-6 rounded-full bg-gray-100 flex items-center justify-center font-black">-</button>
+                                    <span class="text-xs font-black">{{ item.qty }}</span>
+                                    <button @click="updateQty(item.id, 1)" class="w-6 h-6 rounded-full bg-gray-100 flex items-center justify-center font-black">+</button>
+                                </div>
                             </div>
                         </div>
                     </div>
-                    <div v-if="cart.length" class="p-8 border-t bg-gray-50 rounded-t-[3rem]">
+                    <div v-if="cart.length" class="p-8 border-t bg-gray-50 rounded-t-[3rem] shadow-inner">
                         <div class="flex justify-between items-center mb-6">
-                            <span class="font-black text-gray-400 text-xs uppercase">Total</span>
+                            <span class="font-black text-gray-400 text-xs uppercase">Subtotal da Cesta</span>
                             <span class="text-3xl font-black text-blue-900">R$ {{ formatPrice(cartTotal) }}</span>
                         </div>
-                        <button @click="goToCheckout" class="w-full bg-blue-900 text-white py-5 rounded-3xl font-black uppercase text-xs tracking-widest shadow-xl">Finalizar Compra</button>
+                        <button @click="goToCheckout" class="w-full bg-blue-900 text-white py-5 rounded-3xl font-black uppercase text-xs tracking-widest shadow-xl hover:bg-blue-800 transition-all">Finalizar Pedido</button>
                     </div>
                 </div>
             </div>
@@ -190,9 +216,11 @@
                 return {
                     loading: false, currentView: 'store', adminSubView: 'produtos', authMode: 'login', showCart: false,
                     searchQuery: '', selectedCategory: 'Tudo', userAddress: '',
+                    isEditing: false, editId: null,
                     adminSession: null, customerSession: null, currentBanner: 0,
                     categories: ['Medicamentos', 'Higiene', 'Beleza', 'Infantil', 'Suplementos'],
-                    customerRegForm: { name: '', email: '' },
+                    prodForm: { name: '', price: 0, category: 'Medicamentos', image: '', description: '' },
+                    customerRegForm: { name: '', email: '', cpf: '' },
                     customerLoginForm: { email: '' },
                     products: [], banners: [], orders: [], cart: []
                 }
@@ -206,10 +234,6 @@
                     else if (this.selectedCategory !== 'Tudo') list = list.filter(p => p.category === this.selectedCategory);
                     if (this.searchQuery) list = list.filter(p => p.name.toLowerCase().includes(this.searchQuery.toLowerCase()));
                     return list;
-                },
-                customerOrders() {
-                    if (!this.customerSession) return [];
-                    return this.orders.filter(o => o.customer === this.customerSession.name);
                 }
             },
             methods: {
@@ -227,22 +251,43 @@
                     this.$nextTick(() => lucide.createIcons());
                 },
                 async promptCep() {
-                    const cep = prompt("Digite seu CEP:");
+                    const cep = prompt("Digite seu CEP para ver as opções de entrega:");
                     if (cep && cep.length === 8) {
                         try {
                             const res = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
                             const data = await res.json();
                             if (!data.erro) this.userAddress = `${data.logradouro}, ${data.localidade}`;
-                        } catch (e) { alert("CEP não encontrado."); }
+                            else alert("CEP não encontrado.");
+                        } catch (e) { alert("Erro ao buscar CEP."); }
                     }
                 },
+                async handleUpload(e, type) {
+                    const file = e.target.files[0];
+                    const reader = new FileReader();
+                    reader.onload = (res) => { this.prodForm.image = res.target.result; };
+                    reader.readAsDataURL(file);
+                },
+                async saveProduct() {
+                    this.loading = true;
+                    if(this.isEditing) await _supabase.from('products').update(this.prodForm).eq('id', this.editId);
+                    else await _supabase.from('products').insert([this.prodForm]);
+                    this.prodForm = { name: '', price: 0, category: 'Medicamentos', image: '', description: '' };
+                    this.isEditing = false;
+                    await this.fetchData();
+                },
+                startEdit(p) { this.isEditing = true; this.editId = p.id; this.prodForm = { ...p }; },
+                async deleteProduct(id) { if(confirm("Excluir produto permanentemente?")) { await _supabase.from('products').delete().eq('id', id); this.fetchData(); } },
                 async handleCustomerLogin() {
                     const { data } = await _supabase.from('customers').select('*').eq('email', this.customerLoginForm.email).single();
-                    if(data) { this.customerSession = data; this.currentView = 'store'; } else alert("Conta não encontrada.");
+                    if(data) { this.customerSession = data; this.currentView = 'store'; } else alert("Conta não localizada.");
                 },
                 async handleCustomerRegister() {
-                    const { error } = await _supabase.from('customers').insert([this.customerRegForm]);
-                    if(!error) { alert("Cadastrado!"); this.authMode = 'login'; } else alert("Erro!");
+                    await _supabase.from('customers').insert([this.customerRegForm]);
+                    alert("Cadastro realizado!"); this.authMode = 'login';
+                },
+                updateQty(id, val) {
+                    const item = this.cart.find(i => i.id === id);
+                    if(item) { item.qty += val; if(item.qty <= 0) this.cart = this.cart.filter(i => i.id !== id); }
                 },
                 addToCart(p) {
                     const existing = this.cart.find(i => i.id === p.id);
@@ -250,8 +295,8 @@
                     else this.cart.push({...p, qty: 1});
                     this.showCart = true;
                 },
-                goToCheckout() { this.showCart = false; this.currentView = 'checkout-pix'; },
                 formatPrice(v) { return parseFloat(v || 0).toFixed(2).replace('.', ','); },
+                goToCheckout() { this.showCart = false; this.currentView = 'checkout-pix'; },
                 logoutAdmin() { this.adminSession = null; this.currentView = 'store'; }
             },
             mounted() { 
