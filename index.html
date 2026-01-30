@@ -55,7 +55,7 @@
                         <span class="text-[10px] font-bold uppercase tracking-tighter">Pedidos</span>
                     </div>
                     <div @click="showCart = true" class="cursor-pointer flex flex-col items-center group relative">
-                        <div class="bg-blue-900 text-white p-2 rounded-full shadow-md hover:bg-blue-800 transition">
+                        <div class="bg-blue-900 text-white p-2 rounded-full shadow-md hover:scale-105 transition">
                             <i data-lucide="shopping-basket" class="w-6 h-6"></i>
                             <span class="absolute -top-1 -right-1 bg-red-600 text-white text-[9px] w-5 h-5 flex items-center justify-center rounded-full font-black border-2 border-white">{{ cartCount }}</span>
                         </div>
@@ -69,10 +69,9 @@
                         <i data-lucide="map-pin" class="w-4 h-4"></i>
                         <span class="whitespace-nowrap">{{ userAddress || 'Inserir CEP' }}</span>
                     </div>
-                    <button @click="selectedCategory = 'Ofertas'" class="text-red-600 flex items-center gap-1"><i data-lucide="percent" class="w-3 h-3"></i> Suas Ofertas</button>
-                    <button v-for="cat in categories.filter(c => c !== 'Tudo')" :key="cat" @click="selectedCategory = cat" class="hover:text-blue-600">{{ cat }}</button>
+                    <button @click="selectedCategory = 'Ofertas'" class="text-red-600 flex items-center gap-1 hover:scale-105 transition"><i data-lucide="percent" class="w-3 h-3"></i> Suas Ofertas</button>
+                    <button v-for="cat in categories.filter(c => c !== 'Tudo')" :key="cat" @click="selectedCategory = cat" class="hover:text-blue-600 transition">{{ cat }}</button>
                     <button @click="currentView = 'admin-panel'" v-if="adminSession" class="text-blue-900 font-bold border-l pl-4 underline">Administrador</button>
-                    <button @click="currentView = 'admin-panel'; adminSubView = 'logistica'" class="ml-auto opacity-70 hover:opacity-100">Logística</button>
                 </div>
             </div>
         </header>
@@ -84,7 +83,7 @@
                     <transition name="fade" mode="out-in">
                         <div :key="currentBanner" class="absolute inset-0 w-full h-full flex items-center px-12">
                             <div class="text-white max-w-md z-10">
-                                <h2 class="text-4xl md:text-5xl font-black uppercase leading-none mb-2">{{ banners[currentBanner]?.title }}</h2>
+                                <h2 class="text-4xl md:text-5xl font-black uppercase italic leading-none mb-2">{{ banners[currentBanner]?.title }}</h2>
                                 <p class="text-yellow-400 font-bold uppercase text-sm tracking-widest">{{ banners[currentBanner]?.subtitle }}</p>
                             </div>
                             <img v-if="banners[currentBanner]?.image" :src="banners[currentBanner]?.image" class="absolute right-0 h-full w-2/3 object-cover opacity-80 mask-gradient">
@@ -93,11 +92,11 @@
                 </div>
 
                 <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-6">
-                    <div v-for="p in filteredProducts" :key="p.id" class="bg-white p-4 rounded-3xl border hover:shadow-2xl transition-all flex flex-col group">
-                        <div class="h-48 flex items-center justify-center mb-4 bg-gray-50 rounded-2xl p-4">
+                    <div v-for="p in filteredProducts" :key="p.id" class="bg-white p-4 rounded-3xl border hover:shadow-2xl transition-all group flex flex-col">
+                        <div class="h-48 flex items-center justify-center overflow-hidden mb-4 relative bg-gray-50 rounded-2xl p-4">
                             <img :src="p.image" class="max-h-full group-hover:scale-110 transition duration-500">
                         </div>
-                        <p class="text-[9px] font-black text-gray-400 uppercase">{{ p.category }}</p>
+                        <p class="text-[9px] font-black text-gray-400 uppercase mb-1">{{ p.category }}</p>
                         <h3 class="font-bold text-xs uppercase text-gray-800 line-clamp-2 h-8 leading-tight">{{ p.name }}</h3>
                         <p class="text-xl font-black text-blue-900 mt-4">R$ {{ formatPrice(p.price) }}</p>
                         <button @click="addToCart(p)" class="w-full mt-4 bg-blue-900 text-white py-2.5 rounded-full font-black text-[10px] uppercase shadow-md transition hover:bg-blue-800">Comprar</button>
@@ -105,33 +104,33 @@
                 </div>
             </section>
 
-            <section v-if="currentView === 'admin-panel' && adminSession" class="space-y-8">
+            <section v-if="currentView === 'admin-panel' && adminSession" class="space-y-8 animate-fade-in">
                 <div class="bg-white p-8 rounded-3xl shadow-sm border flex flex-wrap gap-4 items-center">
-                    <h2 class="text-xl font-black text-blue-900 uppercase italic mr-auto">Painel de Controle</h2>
+                    <h2 class="text-xl font-black text-blue-900 uppercase italic mr-auto">Painel Logística</h2>
                     <button @click="adminSubView = 'estoque'" :class="adminSubView === 'estoque' ? 'bg-blue-600 text-white' : 'bg-gray-100'" class="px-6 py-2 rounded-xl text-[10px] font-black uppercase transition">Estoque</button>
                     <button @click="adminSubView = 'marketing'" :class="adminSubView === 'marketing' ? 'bg-blue-600 text-white' : 'bg-gray-100'" class="px-6 py-2 rounded-xl text-[10px] font-black uppercase transition">Marketing</button>
-                    <button @click="adminSubView = 'equipe'" :class="adminSubView === 'equipe' ? 'bg-blue-600 text-white' : 'bg-gray-100'" class="px-6 py-2 rounded-xl text-[10px] font-black uppercase transition">Equipe</button>
+                    <button @click="adminSubView = 'usuarios'" :class="adminSubView === 'usuarios' ? 'bg-blue-600 text-white' : 'bg-gray-100'" class="px-6 py-2 rounded-xl text-[10px] font-black uppercase transition">Usuários</button>
                     <button @click="logoutAdmin" class="bg-red-500 text-white px-6 py-2 rounded-xl text-[10px] font-black uppercase">Sair</button>
                 </div>
 
-                <div v-if="adminSubView === 'estoque'" class="bg-white p-8 rounded-3xl border shadow-xl animate-fade-in">
-                    <h3 class="font-black uppercase text-blue-600 mb-6 border-b pb-2 italic">{{ isEditing ? 'Editar Item' : 'Novo Medicamento' }}</h3>
+                <div v-if="adminSubView === 'estoque'" class="bg-white p-8 rounded-3xl border shadow-xl">
+                    <h3 class="font-black uppercase text-blue-600 mb-6 border-b pb-2 italic">{{ isEditing ? 'Editar Medicamento' : 'Novo Medicamento' }}</h3>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-                        <input v-model="prodForm.name" placeholder="Nome do Produto" class="border p-4 rounded-2xl font-bold">
-                        <input v-model="prodForm.price" type="number" placeholder="Preço" class="border p-4 rounded-2xl font-bold">
-                        <select v-model="prodForm.category" class="border p-4 rounded-2xl font-bold bg-white">
+                        <input v-model="prodForm.name" placeholder="Nome" class="border p-4 rounded-2xl font-bold outline-none">
+                        <input v-model="prodForm.price" type="number" placeholder="Preço" class="border p-4 rounded-2xl font-bold outline-none">
+                        <select v-model="prodForm.category" class="border p-4 rounded-2xl font-bold outline-none bg-white">
                             <option v-for="cat in categories.filter(c => c !== 'Tudo')" :key="cat" :value="cat">{{ cat }}</option>
                         </select>
                         <input type="file" @change="e => handleUpload(e, 'prod')" class="border p-4 rounded-2xl text-xs">
-                        <textarea v-model="prodForm.description" placeholder="Descrição/Indicação do Produto" class="md:col-span-2 border p-4 rounded-2xl font-bold h-32"></textarea>
-                        <button @click="saveProduct" class="md:col-span-2 bg-blue-600 text-white py-4 rounded-2xl font-black uppercase shadow-lg">{{ isEditing ? 'Atualizar Dados' : 'Cadastrar na Nuvem' }}</button>
+                        <textarea v-model="prodForm.description" placeholder="Descrição completa do produto" class="md:col-span-2 border p-4 rounded-2xl font-bold h-32"></textarea>
+                        <button @click="saveProduct" class="md:col-span-2 bg-blue-600 text-white py-4 rounded-2xl font-black uppercase shadow-lg">{{ isEditing ? 'Atualizar Dados' : 'Adicionar ao Estoque' }}</button>
                     </div>
                     <div class="overflow-x-auto">
                         <table class="w-full text-left text-xs uppercase font-bold">
                             <thead class="bg-gray-50 border-b"><tr><th class="p-4">Item</th><th class="p-4">Preço</th><th class="p-4 text-right">Ações</th></tr></thead>
                             <tbody>
-                                <tr v-for="p in products" :key="p.id" class="border-b">
-                                    <td class="p-4 flex items-center gap-3"><img :src="p.image" class="w-10 h-10 object-contain border rounded">{{p.name}}</td>
+                                <tr v-for="p in products" :key="p.id" class="border-b hover:bg-gray-50 transition">
+                                    <td class="p-4 flex items-center gap-3"><img :src="p.image" class="w-10 h-10 object-contain border rounded shadow-sm">{{p.name}}</td>
                                     <td class="p-4">R$ {{formatPrice(p.price)}}</td>
                                     <td class="p-4 text-right space-x-2">
                                         <button @click="startEdit(p)" class="text-blue-600 underline">Editar</button>
@@ -147,25 +146,32 @@
                     <h3 class="font-black uppercase text-blue-600 mb-6 italic">Gerenciar Banners</h3>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
                         <input v-model="bannerForm.title" placeholder="Título do Banner" class="border p-4 rounded-2xl font-bold">
-                        <input v-model="bannerForm.subtitle" placeholder="Subtítulo" class="border p-4 rounded-2xl font-bold">
+                        <input v-model="bannerForm.subtitle" placeholder="Subtítulo/Oferta" class="border p-4 rounded-2xl font-bold">
                         <input type="file" @change="e => handleUpload(e, 'banner')" class="md:col-span-2 border p-4 rounded-2xl text-xs">
                         <button @click="saveBanner" class="md:col-span-2 bg-green-600 text-white py-4 rounded-2xl font-black uppercase shadow-lg">Publicar Banner</button>
                     </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div v-for="b in banners" :key="b.id" class="border rounded-2xl p-4 flex gap-4 items-center relative">
+                            <img :src="b.image" class="w-20 h-20 object-cover rounded-xl">
+                            <div><p class="font-black text-xs uppercase">{{ b.title }}</p></div>
+                            <button @click="deleteBanner(b.id)" class="absolute top-2 right-2 text-red-500"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                        </div>
+                    </div>
                 </div>
             </section>
-            
+
             <section v-if="currentView === 'customer-login'" class="max-w-md mx-auto py-12">
                 <div class="bg-white p-10 rounded-[3rem] shadow-2xl border text-center">
-                    <h2 class="text-2xl font-black text-blue-900 uppercase mb-8 italic tracking-tighter">{{ authMode === 'login' ? 'Identificação' : 'Criar Conta' }}</h2>
+                    <h2 class="text-2xl font-black text-blue-900 uppercase mb-8 italic tracking-tighter">{{ authMode === 'login' ? 'Identificação' : 'Criar minha Conta' }}</h2>
                     <div class="space-y-4 text-left">
                         <div v-if="authMode === 'register'" class="space-y-4">
                             <input v-model="customerRegForm.name" placeholder="Nome Completo" class="w-full bg-gray-50 rounded-2xl p-4 font-bold border focus:border-blue-600 outline-none">
                             <input v-model="customerRegForm.cpf" placeholder="CPF" class="w-full bg-gray-50 rounded-2xl p-4 font-bold border focus:border-blue-600 outline-none">
                         </div>
-                        <input v-model="customerLoginForm.email" placeholder="E-mail" class="w-full bg-gray-50 rounded-2xl p-4 font-bold border focus:border-blue-600 outline-none">
+                        <input v-model="customerLoginForm.email" placeholder="Seu E-mail" class="w-full bg-gray-50 rounded-2xl p-4 font-bold border focus:border-blue-600 outline-none">
                         <button @click="authMode === 'login' ? handleCustomerLogin() : handleCustomerRegister()" 
-                                class="w-full bg-blue-900 text-white py-4 rounded-2xl font-black uppercase text-xs shadow-lg mt-4">{{ authMode === 'login' ? 'Acessar' : 'Cadastrar' }}</button>
-                        <button @click="authMode = authMode === 'login' ? 'register' : 'login'" class="w-full text-center text-[10px] font-black text-gray-400 underline uppercase mt-2">{{ authMode === 'login' ? 'Não tenho cadastro' : 'Já sou cliente' }}</button>
+                                class="w-full bg-blue-900 text-white py-4 rounded-2xl font-black uppercase text-xs shadow-lg mt-4 transition-all hover:bg-blue-800">{{ authMode === 'login' ? 'Acessar Agora' : 'Finalizar Cadastro' }}</button>
+                        <button @click="authMode = authMode === 'login' ? 'register' : 'login'" class="w-full text-center text-[10px] font-black text-gray-400 underline uppercase mt-2">{{ authMode === 'login' ? 'Quero me cadastrar' : 'Já sou cliente' }}</button>
                     </div>
                 </div>
             </section>
@@ -176,8 +182,8 @@
                 <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" @click="showCart = false"></div>
                 <div class="relative w-full max-w-md bg-white h-full shadow-2xl flex flex-col">
                     <div class="p-8 bg-blue-900 text-white flex justify-between items-center">
-                        <h2 class="text-xl font-black uppercase italic tracking-tighter italic">Cesta de Compras</h2>
-                        <button @click="showCart = false"><i data-lucide="x"></i></button>
+                        <h2 class="text-xl font-black uppercase italic tracking-tighter italic">Minha Cesta</h2>
+                        <button @click="showCart = false" class="hover:rotate-90 transition"><i data-lucide="x"></i></button>
                     </div>
                     <div class="flex-1 overflow-y-auto p-8 space-y-6">
                         <div v-for="item in cart" :key="item.id" class="flex gap-4 border-b pb-6 items-center">
@@ -195,10 +201,10 @@
                     </div>
                     <div v-if="cart.length" class="p-8 border-t bg-gray-50 rounded-t-[3rem] shadow-inner">
                         <div class="flex justify-between items-center mb-6">
-                            <span class="font-black text-gray-400 text-xs uppercase">Total da Cesta</span>
+                            <span class="font-black text-gray-400 text-xs uppercase tracking-widest">Subtotal da Cesta</span>
                             <span class="text-3xl font-black text-blue-900">R$ {{ formatPrice(cartTotal) }}</span>
                         </div>
-                        <button @click="goToCheckout" class="w-full bg-blue-900 text-white py-5 rounded-3xl font-black uppercase text-xs tracking-widest shadow-xl">Finalizar Pedido</button>
+                        <button @click="goToCheckout" class="w-full bg-blue-900 text-white py-5 rounded-3xl font-black uppercase text-xs tracking-widest shadow-xl hover:bg-blue-800 transition-all">Finalizar Pedido</button>
                     </div>
                 </div>
             </div>
@@ -284,11 +290,12 @@
                     this.bannerForm = { title: '', subtitle: '', image: '' };
                     await this.fetchData();
                 },
+                async deleteBanner(id) { await _supabase.from('banners').delete().eq('id', id); await this.fetchData(); },
                 startEdit(p) { this.isEditing = true; this.editId = p.id; this.prodForm = { ...p }; },
                 async deleteProduct(id) { if(confirm("Remover este item?")) { await _supabase.from('products').delete().eq('id', id); this.fetchData(); } },
                 async handleCustomerLogin() {
                     const { data } = await _supabase.from('customers').select('*').eq('email', this.customerLoginForm.email).single();
-                    if(data) { this.customerSession = data; this.currentView = 'store'; } else alert("Cadastro não encontrado.");
+                    if(data) { this.customerSession = data; this.currentView = 'store'; } else alert("Conta não localizada.");
                 },
                 async handleCustomerRegister() {
                     await _supabase.from('customers').insert([this.customerRegForm]);
