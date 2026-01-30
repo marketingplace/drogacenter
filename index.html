@@ -104,12 +104,12 @@
                 </div>
             </section>
 
-            <section v-if="currentView === 'admin-panel' && adminSession" class="space-y-8 animate-fade-in">
+            <section v-if="currentView === 'admin-panel'" class="space-y-8 animate-fade-in">
                 <div class="bg-white p-8 rounded-3xl shadow-sm border flex flex-wrap gap-4 items-center">
                     <h2 class="text-xl font-black text-blue-900 uppercase italic mr-auto">Painel Logística</h2>
                     <button @click="adminSubView = 'estoque'" :class="adminSubView === 'estoque' ? 'bg-blue-600 text-white' : 'bg-gray-100'" class="px-6 py-2 rounded-xl text-[10px] font-black uppercase transition">Estoque</button>
                     <button @click="adminSubView = 'marketing'" :class="adminSubView === 'marketing' ? 'bg-blue-600 text-white' : 'bg-gray-100'" class="px-6 py-2 rounded-xl text-[10px] font-black uppercase transition">Marketing</button>
-                    <button @click="adminSubView = 'usuarios'" :class="adminSubView === 'usuarios' ? 'bg-blue-600 text-white' : 'bg-gray-100'" class="px-6 py-2 rounded-xl text-[10px] font-black uppercase transition">Usuários</button>
+                    <button @click="adminSubView = 'equipe'" :class="adminSubView === 'equipe' ? 'bg-blue-600 text-white' : 'bg-gray-100'" class="px-6 py-2 rounded-xl text-[10px] font-black uppercase transition">Equipe</button>
                     <button @click="logoutAdmin" class="bg-red-500 text-white px-6 py-2 rounded-xl text-[10px] font-black uppercase">Sair</button>
                 </div>
 
@@ -123,7 +123,7 @@
                         </select>
                         <input type="file" @change="e => handleUpload(e, 'prod')" class="border p-4 rounded-2xl text-xs">
                         <textarea v-model="prodForm.description" placeholder="Descrição completa do produto" class="md:col-span-2 border p-4 rounded-2xl font-bold h-32"></textarea>
-                        <button @click="saveProduct" class="md:col-span-2 bg-blue-600 text-white py-4 rounded-2xl font-black uppercase shadow-lg">{{ isEditing ? 'Atualizar Dados' : 'Adicionar ao Estoque' }}</button>
+                        <button @click="saveProduct" class="md:col-span-2 bg-blue-600 text-white py-4 rounded-2xl font-black uppercase shadow-lg transition hover:bg-blue-700">{{ isEditing ? 'Atualizar Dados' : 'Cadastrar na Nuvem' }}</button>
                     </div>
                     <div class="overflow-x-auto">
                         <table class="w-full text-left text-xs uppercase font-bold">
@@ -166,12 +166,13 @@
                     <div class="space-y-4 text-left">
                         <div v-if="authMode === 'register'" class="space-y-4">
                             <input v-model="customerRegForm.name" placeholder="Nome Completo" class="w-full bg-gray-50 rounded-2xl p-4 font-bold border focus:border-blue-600 outline-none">
-                            <input v-model="customerRegForm.cpf" placeholder="CPF" class="w-full bg-gray-50 rounded-2xl p-4 font-bold border focus:border-blue-600 outline-none">
+                            <input v-model="customerRegForm.address" placeholder="Endereço Completo" class="w-full bg-gray-50 rounded-2xl p-4 font-bold border focus:border-blue-600 outline-none">
+                            <input v-model="customerRegForm.pass" type="password" placeholder="Crie uma Senha" class="w-full bg-gray-50 rounded-2xl p-4 font-bold border focus:border-blue-600 outline-none">
                         </div>
                         <input v-model="customerLoginForm.email" placeholder="Seu E-mail" class="w-full bg-gray-50 rounded-2xl p-4 font-bold border focus:border-blue-600 outline-none">
                         <button @click="authMode === 'login' ? handleCustomerLogin() : handleCustomerRegister()" 
                                 class="w-full bg-blue-900 text-white py-4 rounded-2xl font-black uppercase text-xs shadow-lg mt-4 transition-all hover:bg-blue-800">{{ authMode === 'login' ? 'Acessar Agora' : 'Finalizar Cadastro' }}</button>
-                        <button @click="authMode = authMode === 'login' ? 'register' : 'login'" class="w-full text-center text-[10px] font-black text-gray-400 underline uppercase mt-2">{{ authMode === 'login' ? 'Quero me cadastrar' : 'Já sou cliente' }}</button>
+                        <button @click="authMode = authMode === 'login' ? 'register' : 'login'" class="w-full text-center text-[10px] font-black text-gray-400 underline uppercase mt-2">{{ authMode === 'login' ? 'Não tenho cadastro' : 'Já sou cliente' }}</button>
                     </div>
                 </div>
             </section>
@@ -182,7 +183,7 @@
                 <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" @click="showCart = false"></div>
                 <div class="relative w-full max-w-md bg-white h-full shadow-2xl flex flex-col">
                     <div class="p-8 bg-blue-900 text-white flex justify-between items-center">
-                        <h2 class="text-xl font-black uppercase italic tracking-tighter italic">Minha Cesta</h2>
+                        <h2 class="text-xl font-black uppercase italic tracking-tighter">Minha Cesta</h2>
                         <button @click="showCart = false" class="hover:rotate-90 transition"><i data-lucide="x"></i></button>
                     </div>
                     <div class="flex-1 overflow-y-auto p-8 space-y-6">
@@ -201,7 +202,7 @@
                     </div>
                     <div v-if="cart.length" class="p-8 border-t bg-gray-50 rounded-t-[3rem] shadow-inner">
                         <div class="flex justify-between items-center mb-6">
-                            <span class="font-black text-gray-400 text-xs uppercase tracking-widest">Subtotal da Cesta</span>
+                            <span class="font-black text-gray-400 text-xs uppercase tracking-widest">Total da Cesta</span>
                             <span class="text-3xl font-black text-blue-900">R$ {{ formatPrice(cartTotal) }}</span>
                         </div>
                         <button @click="goToCheckout" class="w-full bg-blue-900 text-white py-5 rounded-3xl font-black uppercase text-xs tracking-widest shadow-xl hover:bg-blue-800 transition-all">Finalizar Pedido</button>
@@ -228,7 +229,7 @@
                     categories: ['Tudo', 'Medicamentos', 'Higiene', 'Beleza', 'Infantil', 'Suplementos'],
                     prodForm: { name: '', price: 0, category: 'Medicamentos', image: '', description: '' },
                     bannerForm: { title: '', subtitle: '', image: '' },
-                    customerRegForm: { name: '', email: '', cpf: '' },
+                    customerRegForm: { name: '', email: '', address: '', pass: '' },
                     customerLoginForm: { email: '' },
                     products: [], banners: [], orders: [], cart: []
                 }
