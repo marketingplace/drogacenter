@@ -7,58 +7,77 @@ createApp({
             loading: false,
             adminSession: JSON.parse(sessionStorage.getItem('dr_logged_admin')) || null,
             showProductModal: false,
-            isAlarming: false,
-            lastOrdersCount: 0,
+            showBannerModal: false,
             
-            // Dados integrados com o site principal
+            // BANCO DE DADOS LOCAL (Mesmas chaves do site)
             products: JSON.parse(localStorage.getItem('dr_products')) || [],
             orders: JSON.parse(localStorage.getItem('dr_orders')) || [],
+            admins: JSON.parse(localStorage.getItem('dr_admins')) || [],
+            banners: JSON.parse(localStorage.getItem('dr_banners')) || [
+                {title: 'Ofertas de Verão', subtitle: 'Higiene com 20% OFF', image: '', active: true}
+            ],
             
             // Formulários
-            prodForm: { id: null, name: '', price: 0, category: '', qty: 0, image: '' }
+            prodForm: { id: null, name: '', price: 0, category: '', qty: 0, image: '', description: '' },
+            bannerForm: { title: '', subtitle: '', image: '', active: true },
+            newPass: '',
+            
+            lastOrdersCount: 0,
+            isAlarming: false
         }
     },
     computed: {
+        isMaster() {
+            return this.adminSession?.role.includes('master');
+        },
         revenue() {
-            return this.orders
-                .filter(o => o.status === 'Entregue')
-                .reduce((acc, o) => acc + o.total, 0);
-        },
-        deliveredCount() {
-            return this.orders.filter(o => o.status === 'Entregue').length;
-        },
-        pendingOrdersCount() {
-            return this.orders.filter(o => o.status === 'Pendente').length;
+            return this.orders.filter(o => o.status === 'Entregue').reduce((acc, o) => acc + o.total, 0);
         },
         lowStockCount() {
             return this.products.filter(p => p.qty < 5).length;
+        },
+        deliveredCount() {
+            return this.orders.filter(o => o.status === 'Entregue').length;
         }
     },
     methods: {
-        // --- SINCRONIZAÇÃO E ALERTA ---
-        checkNewOrders() {
-            const currentOrders = JSON.parse(localStorage.getItem('dr_orders')) || [];
+        // --- FUNÇÃO CORE: UPLOAD DE IMAGEM LOCAL ---
+        handleFileUpload(event, type) {
+            const file = event.target.files[0];
+            const reader = new FileReader();
             
-            // Se o número de pedidos no localStorage for maior que o atual, tem coisa nova!
-            if (currentOrders.length > this.lastOrdersCount) {
-                this.orders = currentOrders;
-                this.lastOrdersCount = currentOrders.length;
-                this.playAlarm();
-            }
-        },
-        playAlarm() {
-            const alarm = document.getElementById('orderAlarm');
-            alarm.play();
-            this.isAlarming = true;
-        },
-        stopAlarm() {
-            const alarm = document.getElementById('orderAlarm');
-            alarm.pause();
-            alarm.currentTime = 0;
-            this.isAlarming = false;
+            reader.onload = (e) => {
+                const base64Image = e.target.result;
+                if (type === 'prod') {
+                    this.prodForm.image = base64Image;
+                } else if (type === 'banner') {
+                    this.bannerForm.image = base64Image;
+                }
+            };
+            // Lê o arquivo do computador do usuário
+            reader.readAsDataURL(file);
         },
 
-        // --- GESTÃO DE ESTOQUE ---
+        // --- GESTÃO DE BANNERS ---
+        openBannerModal() { this.showBannerModal = true; this.bannerForm = { title: '', subtitle: '', image: '', active: true }; },
+        saveBanner() {
+            this.banners.push({...this.bannerForm});
+            localStorage.setItem('dr_banners', JSON.stringify(this.banners));
+            this.showBannerModal = false;
+        },
+        toggleBanner(idx) {
+            this.banners[idx].active = !this.banners[idx].active;
+            localStorage.setItem('dr_banners', JSON.stringify(this.banners));
+        },
+        deleteBanner(idx) {
+            if(confirm("Excluir banner?")) {
+                this.banners.splice(idx, 1);
+                localStorage.setItem('dr_banners', JSON.stringify(this.banners));
+            }
+        },
+
+        // --- GESTÃO DE ESTOQUE (COM DESCRIÇÃO) ---
+        openProductModal() { this.showProductModal = true; this.prodForm = { id: null, name: '', price: 0, category: '', qty: 0, image: '', description: '' }; },
         saveProduct() {
             if (!this.prodForm.id) {
                 this.prodForm.id = Date.now();
@@ -67,55 +86,58 @@ createApp({
                 const idx = this.products.findIndex(p => p.id === this.prodForm.id);
                 this.products[idx] = { ...this.prodForm };
             }
-            this.syncStock();
+            localStorage.setItem('dr_products', JSON.stringify(this.products));
             this.showProductModal = false;
-            this.prodForm = { id: null, name: '', price: 0, category: '', qty: 0, image: '' };
         },
+        editProduct(p) { this.prodForm = { ...p }; this.showProductModal = true; },
         deleteProduct(id) {
-            if(confirm("Deseja realmente excluir?")) {
+            if(confirm("Excluir produto?")) {
                 this.products = this.products.filter(p => p.id !== id);
-                this.syncStock();
+                localStorage.setItem('dr_products', JSON.stringify(this.products));
             }
         },
-        syncStock() {
-            localStorage.setItem('dr_products', JSON.stringify(this.products));
+
+        // --- SEGURANÇA E SENHAS ---
+        changeOwnPass() {
+            const idx = this.admins.findIndex(a => a.user === this.adminSession.user);
+            this.admins[idx].pass = this.newPass;
+            localStorage.setItem('dr_admins', JSON.stringify(this.admins));
+            alert("Sua senha foi atualizada!");
+            this.newPass = '';
+        },
+        resetUserPass(userObj) {
+            const nova = prompt("Digite a nova senha para " + userObj.user);
+            if(nova) {
+                const idx = this.admins.findIndex(a => a.user === userObj.user);
+                this.admins[idx].pass = nova;
+                localStorage.setItem('dr_admins', JSON.stringify(this.admins));
+                alert("Senha resetada!");
+            }
+        },
+        canManageUser(u) {
+            if (this.adminSession.role === 'master_sistema') return true;
+            if (this.adminSession.role === 'master_loja' && !u.role.includes('sistema')) return true;
+            return false;
+        },
+        canDeleteUser(u) {
+            if (u.user === 'Theo') return false; // Intocável
+            return this.canManageUser(u);
+        },
+        deleteUser(u) {
+            if(confirm("Remover " + u.user + "?")) {
+                this.admins = this.admins.filter(a => a.user !== u.user);
+                localStorage.setItem('dr_admins', JSON.stringify(this.admins));
+            }
         },
 
-        // --- GESTÃO DE PEDIDOS ---
-        updateStatus(orderId, newStatus) {
-            const idx = this.orders.findIndex(o => o.id === orderId);
-            this.orders[idx].status = newStatus;
-            localStorage.setItem('dr_orders', JSON.stringify(this.orders));
-            this.stopAlarm(); // Para o som ao interagir
-        },
-        deleteOrder(id) {
-            this.orders = this.orders.filter(o => o.id !== id);
-            localStorage.setItem('dr_orders', JSON.stringify(this.orders));
-        },
-
-        formatPrice(v) {
-            return parseFloat(v).toFixed(2).replace('.', ',');
-        },
-        logout() {
-            sessionStorage.removeItem('dr_logged_admin');
-            window.location.href = 'index.html';
-        }
+        // --- UTILITÁRIOS ---
+        formatPrice(v) { return parseFloat(v).toFixed(2).replace('.', ','); },
+        logout() { sessionStorage.removeItem('dr_logged_admin'); window.location.href = 'index.html'; },
+        stopAlarm() { document.getElementById('orderAlarm').pause(); this.isAlarming = false; }
     },
     mounted() {
         if (!this.adminSession) window.location.href = 'index.html';
-        
-        // Inicializa contagem
-        this.lastOrdersCount = this.orders.length;
-        
-        // Ativa os ícones do Tailwind
         lucide.createIcons();
-
-        // Loop de verificação de novos pedidos (a cada 5 segundos)
-        setInterval(() => {
-            this.checkNewOrders();
-        }, 5000);
     },
-    updated() {
-        lucide.createIcons();
-    }
+    updated() { lucide.createIcons(); }
 }).mount('#app');

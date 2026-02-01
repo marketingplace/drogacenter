@@ -1,56 +1,35 @@
-<!DOCTYPE html>
-<html lang="pt-br">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login Admin | Drogacenter</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;900&display=swap" rel="stylesheet">
-    <style>body { font-family: 'Inter', sans-serif; }</style>
-</head>
-<body class="bg-slate-100 flex items-center justify-center min-h-screen">
-    <div id="app" class="bg-white p-8 rounded-3xl shadow-2xl w-full max-w-md border border-blue-100">
-        <div class="text-center mb-8">
-            <h1 class="text-2xl font-black text-blue-900 uppercase italic">DROGA<span class="text-green-600">CENTER</span></h1>
-            <p class="text-gray-400 font-bold text-[10px] uppercase tracking-widest mt-2">Painel de Controle</p>
-        </div>
+<script>
+    const { createApp } = Vue;
+    createApp({
+        data() {
+            return { user: '', pass: '' }
+        },
+        methods: {
+            handleLogin() {
+                let admins = JSON.parse(localStorage.getItem('dr_admins')) || [];
+                
+                // CRIAÇÃO DOS MASTER ADMINS (Caso não existam)
+                const masters = [
+                    {user: 'Charles', pass: 'Patrão', role: 'master_loja'},
+                    {user: 'Theo', pass: 'Gh050819', role: 'master_sistema'}
+                ];
 
-        <div class="space-y-4">
-            <div>
-                <label class="text-[10px] font-black uppercase text-gray-400 ml-2">Usuário</label>
-                <input v-model="user" type="text" class="w-full border-none bg-gray-100 p-4 rounded-2xl font-bold outline-none focus:ring-2 focus:ring-blue-600">
-            </div>
-            <div>
-                <label class="text-[10px] font-black uppercase text-gray-400 ml-2">Senha</label>
-                <input v-model="pass" type="password" class="w-full border-none bg-gray-100 p-4 rounded-2xl font-bold outline-none focus:ring-2 focus:ring-blue-600">
-            </div>
-            <button @click="handleLogin" class="w-full bg-blue-900 text-white py-4 rounded-2xl font-black uppercase text-xs shadow-lg hover:bg-blue-800 transition-all">Entrar no Sistema</button>
-        </div>
-    </div>
-
-    <script>
-        const { createApp } = Vue;
-        createApp({
-            data() {
-                return { user: '', pass: '' }
-            },
-            methods: {
-                handleLogin() {
-                    const admins = JSON.parse(localStorage.getItem('dr_admins')) || [{user:'admin', pass:'farmacia123', role:'admin'}];
-                    // Salva o admin padrão se for o primeiro acesso
-                    if(!localStorage.getItem('dr_admins')) localStorage.setItem('dr_admins', JSON.stringify(admins));
-
-                    const found = admins.find(a => a.user === this.user && a.pass === this.pass);
-                    if(found) {
-                        sessionStorage.setItem('dr_logged_admin', JSON.stringify(found));
-                        window.location.href = 'dashboard.html';
-                    } else {
-                        alert("Acesso Negado!");
+                masters.forEach(m => {
+                    if (!admins.find(a => a.user === m.user)) {
+                        admins.push(m);
                     }
+                });
+                localStorage.setItem('dr_admins', JSON.stringify(admins));
+
+                const found = admins.find(a => a.user === this.user && a.pass === this.pass);
+                if(found) {
+                    // Salvamos a sessão e o nível de acesso
+                    sessionStorage.setItem('dr_logged_admin', JSON.stringify(found));
+                    window.location.href = 'dashboard.html';
+                } else {
+                    alert("Usuário ou senha incorretos!");
                 }
             }
-        }).mount('#app');
-    </script>
-</body>
-</html>
+        }
+    }).mount('#app');
+</script>

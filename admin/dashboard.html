@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gestão Drogacenter</title>
+    <title>Gestão Drogacenter | Master</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
@@ -15,110 +15,55 @@
         
         <aside class="w-64 bg-blue-900 text-white flex flex-col p-6 sticky top-0 h-screen shadow-2xl">
             <div class="mb-10 text-center">
-                <h1 class="text-xl font-black uppercase italic tracking-tighter">DROGA<span class="text-green-400">CENTER</span></h1>
-                <p class="text-[9px] text-blue-300 font-bold uppercase mt-1">Administração</p>
+                <h1 class="text-xl font-black uppercase italic tracking-tighter text-white">DROGA<span class="text-green-400">CENTER</span></h1>
+                <p class="text-[9px] text-blue-300 font-bold uppercase mt-1">Status: {{ adminSession.role }}</p>
             </div>
 
             <nav class="space-y-2 flex-1">
                 <button @click="view = 'stats'" :class="view === 'stats' ? 'bg-white/10 text-green-400' : ''" class="w-full text-left p-3 rounded-xl font-bold text-xs uppercase flex items-center gap-3">
-                    <i data-lucide="layout-dashboard"></i> Resumo Geral
+                    <i data-lucide="layout-dashboard"></i> Resumo
                 </button>
-                <button @click="view = 'orders'" :class="view === 'orders' ? 'bg-white/10 text-green-400' : ''" class="w-full text-left p-3 rounded-xl font-bold text-xs uppercase flex items-center gap-3 relative">
+                <button @click="view = 'orders'" :class="view === 'orders' ? 'bg-white/10 text-green-400' : ''" class="w-full text-left p-3 rounded-xl font-bold text-xs uppercase flex items-center gap-3">
                     <i data-lucide="shopping-bag"></i> Pedidos
-                    <span v-if="pendingOrdersCount" class="absolute right-3 bg-red-500 text-white text-[8px] px-1.5 py-0.5 rounded-full animate-bounce">{{pendingOrdersCount}}</span>
                 </button>
                 <button @click="view = 'stock'" :class="view === 'stock' ? 'bg-white/10 text-green-400' : ''" class="w-full text-left p-3 rounded-xl font-bold text-xs uppercase flex items-center gap-3">
-                    <i data-lucide="pill"></i> Gerir Estoque
+                    <i data-lucide="pill"></i> Estoque
                 </button>
-                <button v-if="adminSession.role === 'admin'" @click="view = 'marketing'" :class="view === 'marketing' ? 'bg-white/10 text-green-400' : ''" class="w-full text-left p-3 rounded-xl font-bold text-xs uppercase flex items-center gap-3">
-                    <i data-lucide="image"></i> Banners & Marketing
+                <button @click="view = 'banners'" :class="view === 'banners' ? 'bg-white/10 text-green-400' : ''" class="w-full text-left p-3 rounded-xl font-bold text-xs uppercase flex items-center gap-3">
+                    <i data-lucide="image"></i> Banners
+                </button>
+                <button v-if="isMaster" @click="view = 'users'" :class="view === 'users' ? 'bg-white/10 text-green-400' : ''" class="w-full text-left p-3 rounded-xl font-bold text-xs uppercase flex items-center gap-3">
+                    <i data-lucide="users"></i> Equipe
+                </button>
+                <button @click="view = 'profile'" :class="view === 'profile' ? 'bg-white/10 text-green-400' : ''" class="w-full text-left p-3 rounded-xl font-bold text-xs uppercase flex items-center gap-3">
+                    <i data-lucide="lock"></i> Minha Senha
                 </button>
             </nav>
 
-            <div class="pt-6 border-t border-white/10">
-                <p class="text-[9px] font-bold text-blue-300 uppercase mb-4">Logado como: {{adminSession.user}}</p>
-                <button @click="logout" class="w-full bg-red-500/20 text-red-400 p-3 rounded-xl font-bold text-xs uppercase hover:bg-red-500 hover:text-white transition">Sair</button>
-            </div>
+            <button @click="logout" class="bg-red-500/20 text-red-400 p-3 rounded-xl font-bold text-xs uppercase">Sair</button>
         </aside>
 
         <main class="flex-1 p-8">
-            
-            <div v-if="view === 'stats'" class="space-y-6 animate-fade-in">
-                <h2 class="text-2xl font-black text-blue-900 uppercase italic">Resumo do Dia</h2>
-                <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
-                    <div class="bg-white p-6 rounded-3xl shadow-sm border border-l-8 border-blue-500">
-                        <p class="text-gray-400 text-[10px] font-black uppercase">Faturamento Total</p>
-                        <p class="text-2xl font-black text-blue-900">R$ {{ formatPrice(revenue) }}</p>
-                    </div>
-                    <div class="bg-white p-6 rounded-3xl shadow-sm border border-l-8 border-green-500">
-                        <p class="text-gray-400 text-[10px] font-black uppercase">Pedidos Entregues</p>
-                        <p class="text-2xl font-black text-green-600">{{ deliveredCount }}</p>
-                    </div>
-                    <div class="bg-white p-6 rounded-3xl shadow-sm border border-l-8 border-orange-500">
-                        <p class="text-gray-400 text-[10px] font-black uppercase">Estoque Baixo</p>
-                        <p class="text-2xl font-black text-orange-600">{{ lowStockCount }}</p>
-                    </div>
-                </div>
-            </div>
-
-            <div v-if="view === 'orders'" class="space-y-6">
-                <div class="flex justify-between items-center">
-                    <h2 class="text-2xl font-black text-blue-900 uppercase italic">Pedidos Recebidos</h2>
-                    <button @click="stopAlarm" v-if="isAlarming" class="bg-red-500 text-white px-4 py-2 rounded-full font-black text-[10px] animate-pulse">DESLIGAR ALERTA</button>
-                </div>
-                
-                <div class="space-y-4">
-                    <div v-for="order in orders" :key="order.id" class="bg-white p-6 rounded-3xl shadow-sm border flex justify-between items-center transition hover:border-blue-200">
-                        <div>
-                            <span class="text-[8px] font-black uppercase px-2 py-1 rounded bg-blue-100 text-blue-600">{{ order.status }}</span>
-                            <h3 class="font-black text-blue-900 uppercase mt-2">{{ order.customer }}</h3>
-                            <p class="text-xs text-gray-400 font-bold uppercase tracking-tighter">{{ order.address }}</p>
-                        </div>
-                        <div class="text-right flex items-center gap-6">
-                            <div>
-                                <p class="text-green-600 font-black text-xl">R$ {{ formatPrice(order.total) }}</p>
-                                <p class="text-[8px] font-bold text-gray-300">{{ order.date }}</p>
-                            </div>
-                            <div class="flex gap-2">
-                                <button @click="updateStatus(order.id, 'Em Preparação')" class="bg-blue-600 text-white p-2 rounded-lg"><i data-lucide="truck"></i></button>
-                                <button @click="updateStatus(order.id, 'Entregue')" class="bg-green-600 text-white p-2 rounded-lg"><i data-lucide="check"></i></button>
-                                <button @click="deleteOrder(order.id)" class="bg-red-100 text-red-600 p-2 rounded-lg"><i data-lucide="trash-2"></i></button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
             <div v-if="view === 'stock'" class="space-y-6">
                 <div class="flex justify-between items-center">
-                    <h2 class="text-2xl font-black text-blue-900 uppercase italic">Gerir Estoque</h2>
-                    <button @click="showProductModal = true" class="bg-green-600 text-white px-6 py-3 rounded-2xl font-black uppercase text-xs shadow-lg">+ Adicionar Produto</button>
+                    <h2 class="text-2xl font-black text-blue-900 uppercase">Gerir Estoque</h2>
+                    <button @click="openProductModal()" class="bg-green-600 text-white px-6 py-3 rounded-2xl font-black text-xs uppercase">+ Novo Produto</button>
                 </div>
 
-                <div class="bg-white rounded-3xl shadow-sm overflow-hidden border">
+                <div class="bg-white rounded-3xl shadow-sm border overflow-hidden">
                     <table class="w-full text-left">
-                        <thead class="bg-gray-50 border-b">
-                            <tr class="text-[10px] font-black uppercase text-gray-400">
-                                <th class="p-4">Produto</th>
-                                <th class="p-4">Categoria</th>
-                                <th class="p-4">Preço</th>
-                                <th class="p-4">Qtd Disponível</th>
-                                <th class="p-4 text-right">Ações</th>
-                            </tr>
+                        <thead class="bg-gray-50 border-b text-[10px] font-black uppercase text-gray-400">
+                            <tr><th class="p-4">Produto</th><th class="p-4">Preço</th><th class="p-4">Ações</th></tr>
                         </thead>
                         <tbody class="text-xs font-bold uppercase">
-                            <tr v-for="p in products" :key="p.id" class="border-b last:border-0 hover:bg-blue-50/50 transition">
+                            <tr v-for="p in products" :key="p.id" class="border-b last:border-0">
                                 <td class="p-4 flex items-center gap-3">
-                                    <img :src="p.image" class="w-8 h-8 object-contain rounded bg-white p-1 border">
+                                    <img :src="p.image" class="w-10 h-10 object-cover rounded border bg-gray-100">
                                     {{ p.name }}
                                 </td>
-                                <td class="p-4 text-blue-600">{{ p.category }}</td>
-                                <td class="p-4">R$ {{ formatPrice(p.price) }}</td>
+                                <td class="p-4 text-green-600">R$ {{ formatPrice(p.price) }}</td>
                                 <td class="p-4">
-                                    <span :class="p.qty < 5 ? 'text-red-500 animate-pulse' : 'text-slate-700'">{{ p.qty }} un</span>
-                                </td>
-                                <td class="p-4 text-right space-x-2">
-                                    <button @click="editProduct(p)" class="text-blue-600">Editar</button>
+                                    <button @click="editProduct(p)" class="text-blue-600 mr-3">Editar</button>
                                     <button @click="deleteProduct(p.id)" class="text-red-500">Excluir</button>
                                 </td>
                             </tr>
@@ -129,27 +74,95 @@
 
             <div v-if="showProductModal" class="fixed inset-0 z-[300] flex items-center justify-center p-4">
                 <div class="absolute inset-0 bg-blue-900/60 backdrop-blur-sm" @click="showProductModal = false"></div>
-                <div class="relative bg-white w-full max-w-2xl rounded-[2rem] p-10 shadow-2xl">
-                    <h3 class="text-xl font-black text-blue-900 uppercase mb-8 italic">Cadastro de Medicamento</h3>
+                <div class="relative bg-white w-full max-w-2xl rounded-[2rem] p-10 shadow-2xl overflow-y-auto max-h-screen">
+                    <h3 class="text-xl font-black text-blue-900 uppercase mb-6 italic">{{ prodForm.id ? 'Editar' : 'Novo' }} Produto</h3>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <input v-model="prodForm.name" placeholder="Nome do Produto" class="border p-4 rounded-2xl font-bold bg-gray-50 outline-none">
-                        <input v-model="prodForm.price" type="number" placeholder="Preço (R$)" class="border p-4 rounded-2xl font-bold bg-gray-50 outline-none">
-                        <input v-model="prodForm.category" placeholder="Categoria" class="border p-4 rounded-2xl font-bold bg-gray-50 outline-none">
-                        <input v-model="prodForm.qty" type="number" placeholder="Quantidade inicial" class="border p-4 rounded-2xl font-bold bg-gray-50 outline-none">
                         <div class="md:col-span-2">
-                            <label class="text-[9px] font-black uppercase text-gray-400">URL da Imagem</label>
-                            <input v-model="prodForm.image" placeholder="Cole a URL da imagem aqui" class="w-full border p-4 rounded-2xl font-bold bg-gray-50 outline-none">
+                            <label class="text-[9px] font-black uppercase text-gray-400">Foto do Produto</label>
+                            <input type="file" @change="handleFileUpload($event, 'prod')" class="w-full border p-4 rounded-2xl text-xs">
+                            <div v-if="prodForm.image" class="mt-2"><img :src="prodForm.image" class="h-20 rounded shadow-sm border"></div>
                         </div>
-                        <button @click="saveProduct" class="md:col-span-2 bg-blue-900 text-white py-4 rounded-2xl font-black uppercase shadow-lg">Salvar Produto</button>
+                        <input v-model="prodForm.name" placeholder="Nome" class="border p-4 rounded-2xl font-bold bg-gray-50 outline-none">
+                        <input v-model="prodForm.price" type="number" placeholder="Preço" class="border p-4 rounded-2xl font-bold bg-gray-50 outline-none">
+                        <input v-model="prodForm.category" placeholder="Categoria" class="border p-4 rounded-2xl font-bold bg-gray-50 outline-none">
+                        <input v-model="prodForm.qty" type="number" placeholder="Estoque" class="border p-4 rounded-2xl font-bold bg-gray-50 outline-none">
+                        <textarea v-model="prodForm.description" placeholder="Descrição completa..." class="md:col-span-2 border p-4 rounded-2xl font-bold bg-gray-50 outline-none h-32"></textarea>
+                        <button @click="saveProduct" class="md:col-span-2 bg-blue-900 text-white py-4 rounded-2xl font-black uppercase shadow-lg">Salvar Medicamento</button>
                     </div>
                 </div>
             </div>
 
-        </main>
+            <div v-if="view === 'banners'" class="space-y-6">
+                <div class="flex justify-between items-center">
+                    <h2 class="text-2xl font-black text-blue-900 uppercase">Banners Promocionais</h2>
+                    <button @click="openBannerModal()" class="bg-green-600 text-white px-6 py-3 rounded-2xl font-black text-xs uppercase">+ Adicionar Banner</button>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div v-for="(b, idx) in banners" :key="idx" class="bg-white p-4 rounded-3xl border flex flex-col shadow-sm">
+                        <img :src="b.image" class="h-32 object-cover rounded-2xl mb-4 bg-gray-100">
+                        <div class="flex-1">
+                            <p class="font-black text-blue-900 uppercase text-xs">{{ b.title }}</p>
+                            <p class="text-gray-400 text-[10px] font-bold uppercase">{{ b.subtitle }}</p>
+                        </div>
+                        <div class="flex justify-between items-center mt-4 pt-4 border-t">
+                            <span :class="b.active ? 'text-green-500' : 'text-gray-400'" class="text-[9px] font-black uppercase">
+                                {{ b.active ? 'Ativo' : 'Desativado' }}
+                            </span>
+                            <div class="flex gap-2">
+                                <button @click="toggleBanner(idx)" class="text-xs font-bold text-gray-500 underline uppercase">Alterar Status</button>
+                                <button @click="deleteBanner(idx)" class="text-xs font-bold text-red-500 underline uppercase">Remover</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div v-if="showBannerModal" class="fixed inset-0 z-[300] flex items-center justify-center p-4">
+                <div class="absolute inset-0 bg-blue-900/60 backdrop-blur-sm" @click="showBannerModal = false"></div>
+                <div class="relative bg-white w-full max-w-md rounded-[2rem] p-10 shadow-2xl">
+                    <h3 class="text-xl font-black text-blue-900 uppercase mb-6 italic">Novo Banner</h3>
+                    <div class="space-y-4">
+                        <input type="file" @change="handleFileUpload($event, 'banner')" class="w-full border p-4 rounded-2xl text-xs">
+                        <input v-model="bannerForm.title" placeholder="Título da Promoção" class="w-full border p-4 rounded-2xl font-bold bg-gray-50">
+                        <input v-model="bannerForm.subtitle" placeholder="Subtítulo/Texto Curto" class="w-full border p-4 rounded-2xl font-bold bg-gray-50">
+                        <button @click="saveBanner" class="w-full bg-blue-900 text-white py-4 rounded-2xl font-black uppercase shadow-lg">Publicar Banner</button>
+                    </div>
+                </div>
+            </div>
+
+            <div v-if="view === 'users' && isMaster" class="space-y-6">
+                <h2 class="text-2xl font-black text-blue-900 uppercase">Gestão de Equipe</h2>
+                <div class="bg-white rounded-3xl shadow-sm border overflow-hidden">
+                    <table class="w-full text-left text-xs uppercase font-bold">
+                        <thead class="bg-gray-50 border-b text-[10px] font-black uppercase text-gray-400">
+                            <tr><th class="p-4">Usuário</th><th class="p-4">Permissão</th><th class="p-4 text-right">Ações</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr v-for="user in admins" :key="user.user" class="border-b last:border-0">
+                                <td class="p-4">{{ user.user }}</td>
+                                <td class="p-4"><span class="px-2 py-1 bg-gray-100 rounded">{{ user.role }}</span></td>
+                                <td class="p-4 text-right">
+                                    <button v-if="canManageUser(user)" @click="resetUserPass(user)" class="text-blue-600 mr-3">Resetar Senha</button>
+                                    <button v-if="canDeleteUser(user)" @click="deleteUser(user)" class="text-red-500">Excluir</button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div v-if="view === 'profile'" class="max-w-md space-y-6">
+                <h2 class="text-2xl font-black text-blue-900 uppercase italic">Alterar Minha Senha</h2>
+                <div class="bg-white p-8 rounded-3xl shadow-sm border space-y-4">
+                    <input v-model="newPass" type="password" placeholder="Nova Senha" class="w-full border p-4 rounded-2xl font-bold bg-gray-50">
+                    <button @click="changeOwnPass" class="w-full bg-blue-600 text-white py-4 rounded-2xl font-black uppercase shadow-md">Atualizar Senha</button>
+                </div>
+            </div>
+            
+            </main>
     </div>
-
     <audio id="orderAlarm" src="assets/alert.mp3" loop></audio>
-
     <script src="assets/admin.js"></script>
 </body>
 </html>
