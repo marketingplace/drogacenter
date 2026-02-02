@@ -3,60 +3,59 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login Admin | Drogacenter</title>
+    <title>Login | Drogacenter Admin</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body class="bg-slate-100 flex items-center justify-center min-h-screen">
     <div id="app" class="w-full max-w-md p-6">
         <div class="bg-white p-8 rounded-3xl shadow-2xl border border-blue-100">
             <div class="text-center mb-8">
                 <h1 class="text-2xl font-black text-blue-900 uppercase italic">DROGA<span class="text-green-600">CENTER</span></h1>
-                <p class="text-gray-400 font-bold text-[10px] uppercase tracking-widest mt-2">Painel de Controle Cloud</p>
+                <p class="text-gray-400 font-bold text-[10px] uppercase tracking-widest mt-2">Painel de Controle</p>
             </div>
-
             <div class="space-y-4">
-                <div>
-                    <label class="text-[10px] font-black uppercase text-gray-400 ml-2">Usuário</label>
-                    <input v-model="form.user" type="text" class="w-full bg-gray-100 p-4 rounded-2xl font-bold border-none outline-none focus:ring-2 focus:ring-blue-600">
-                </div>
-                <div>
-                    <label class="text-[10px] font-black uppercase text-gray-400 ml-2">Senha</label>
-                    <input v-model="form.pass" type="password" class="w-full bg-gray-100 p-4 rounded-2xl font-bold border-none outline-none focus:ring-2 focus:ring-blue-600">
-                </div>
+                <input v-model="user" type="text" placeholder="Usuário" class="w-full bg-gray-100 p-4 rounded-2xl font-bold outline-none focus:ring-2 focus:ring-blue-600 border-none">
+                <input v-model="pass" type="password" placeholder="Senha" class="w-full bg-gray-100 p-4 rounded-2xl font-bold outline-none focus:ring-2 focus:ring-blue-600 border-none">
                 <button @click="handleLogin" class="w-full bg-blue-900 text-white py-4 rounded-2xl font-black uppercase text-xs shadow-lg hover:bg-blue-800 transition-all">Entrar</button>
             </div>
         </div>
     </div>
 
-    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script>
         const { createApp } = Vue;
-        createApp({
-            data() {
-                return { form: { user: '', pass: '' } }
-            },
-            methods: {
-                handleLogin() {
-                    let admins = JSON.parse(localStorage.getItem('dr_admins')) || [];
-                    
-                    // GESTÃO DE MASTERS (Regra 3)
-                    const masters = [
-                        {user: 'Charles', pass: 'Patrão', role: 'master_loja'},
-                        {user: 'Theo', pass: 'Gh050819', role: 'master_global'}
-                    ];
-                    
-                    masters.forEach(m => {
-                        if (!admins.find(a => a.user === m.user)) admins.push(m);
-                    });
-                    localStorage.setItem('dr_admins', JSON.stringify(admins));
+        // INSIRA SEUS DADOS DO SUPABASE AQUI
+        const SUPABASE_URL = 'SUA_URL_AQUI';
+        const SUPABASE_KEY = 'SUA_KEY_AQUI';
+        const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-                    const found = admins.find(a => a.user === this.form.user && a.pass === this.form.pass);
-                    if(found) {
+        createApp({
+            data() { return { user: '', pass: '' } },
+            methods: {
+                async handleLogin() {
+                    // Injeção Master Automática
+                    const masters = [
+                        { user: 'Charles', pass: 'Patrão', role: 'master_loja' },
+                        { user: 'Theo', pass: 'Gh050819', role: 'master_sistema' }
+                    ];
+
+                    const { data: admins } = await _supabase.from('dr_admins').select('*');
+                    
+                    // Verifica se os masters existem, se não, cria
+                    for (let m of masters) {
+                        if (!admins?.find(a => a.user === m.user)) {
+                            await _supabase.from('dr_admins').insert([m]);
+                        }
+                    }
+
+                    const { data: found } = await _supabase.from('dr_admins')
+                        .select('*').eq('user', this.user).eq('pass', this.pass).single();
+
+                    if (found) {
                         sessionStorage.setItem('dr_logged_admin', JSON.stringify(found));
                         window.location.href = 'dashboard.html';
-                    } else {
-                        alert("Usuário ou senha inválidos!");
-                    }
+                    } else { alert("Acesso negado!"); }
                 }
             }
         }).mount('#app');
