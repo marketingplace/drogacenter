@@ -1,151 +1,89 @@
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
-    <meta charset="UTF-8">
-    <title>Dashboard | Drogacenter Logística</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
-    <script src="https://unpkg.com/lucide@latest"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <style>
-        [v-cloak] { display: none; }
-        body { font-family: 'Inter', sans-serif; }
-    </style>
+<meta charset="UTF-8">
+<title>Dashboard | Drogacenter</title>
+
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
 </head>
-<body class="bg-gray-50">
-    <div id="app" v-cloak class="flex min-h-screen">
-        <aside class="w-64 bg-blue-900 text-white p-6 flex flex-col shadow-2xl sticky top-0 h-screen">
-            <h1 class="text-xl font-black uppercase italic mb-10 text-center">DROGA<span class="text-green-400">CENTER</span></h1>
-            <nav class="space-y-2 flex-1 text-[10px] font-black uppercase tracking-widest">
-                <button @click="view = 'stock'" :class="view === 'stock' ? 'bg-white/10 text-green-400 border-l-4 border-green-400' : ''" class="w-full text-left p-3 rounded-r-xl flex items-center gap-3">Estoque</button>
-                <button @click="view = 'banners'" :class="view === 'banners' ? 'bg-white/10 text-green-400 border-l-4 border-green-400' : ''" class="w-full text-left p-3 rounded-r-xl flex items-center gap-3">Marketing</button>
-                <button @click="view = 'users'" :class="view === 'users' ? 'bg-white/10 text-green-400 border-l-4 border-green-400' : ''" class="w-full text-left p-3 rounded-r-xl flex items-center gap-3">Equipe</button>
-            </nav>
-            <button @click="logout" class="bg-red-500/20 text-red-400 p-3 rounded-xl font-black text-[10px] uppercase">Sair</button>
-        </aside>
+<body class="bg-gray-100">
 
-        <main class="flex-1 p-8">
-            <div v-if="view === 'stock'" class="space-y-6">
-                <div class="flex justify-between items-center">
-                    <h2 class="text-2xl font-black text-blue-900 uppercase italic">Gerenciar Estoque</h2>
-                    <button @click="openModal('product')" class="bg-green-600 text-white px-6 py-3 rounded-2xl font-black text-xs uppercase">+ Adicionar Produto</button>
-                </div>
-                <div class="bg-white rounded-3xl shadow-sm border overflow-hidden">
-                    <table class="w-full text-left">
-                        <thead class="bg-gray-50 border-b text-[10px] font-black uppercase text-gray-400">
-                            <tr><th class="p-4">Item</th><th class="p-4">Preço</th><th class="p-4 text-right">Ações</th></tr>
-                        </thead>
-                        <tbody class="text-xs font-bold uppercase">
-                            <tr v-for="p in products" :key="p.id" class="border-b">
-                                <td class="p-4 flex items-center gap-3">
-                                    <img :src="p.image" class="w-10 h-10 object-contain border rounded"> {{ p.name }}
-                                </td>
-                                <td class="p-4">R$ {{ p.price }}</td>
-                                <td class="p-4 text-right space-x-2">
-                                    <button @click="editItem(p, 'product')" class="text-blue-600">Editar</button>
-                                    <button @click="deleteItem(p.id, 'dr_products')" class="text-red-500">Excluir</button>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
+<div id="app" class="flex min-h-screen">
 
-            <div v-if="view === 'banners'" class="space-y-6">
-                <div class="flex justify-between items-center">
-                    <h2 class="text-2xl font-black text-blue-900 uppercase italic">Marketing Banners</h2>
-                    <button @click="openModal('banner')" class="bg-blue-600 text-white px-6 py-3 rounded-2xl font-black text-xs uppercase">+ Novo Banner</button>
-                </div>
-                <div class="grid grid-cols-2 gap-4">
-                    <div v-for="b in banners" :key="b.id" class="bg-white p-4 rounded-3xl border shadow-sm flex items-center gap-4 relative">
-                        <img :src="b.image" class="w-24 h-12 object-cover rounded">
-                        <p class="font-black text-[10px] uppercase flex-1">{{ b.title }}</p>
-                        <button @click="deleteItem(b.id, 'dr_banners')" class="text-red-500">Excluir</button>
-                    </div>
-                </div>
-            </div>
+<!-- SIDEBAR -->
+<aside class="w-64 bg-blue-900 text-white p-6">
+    <h1 class="font-black text-xl mb-8">DROGA<span class="text-green-400">CENTER</span></h1>
 
-            <div v-if="showModal" class="fixed inset-0 z-[300] flex items-center justify-center p-4">
-                <div class="absolute inset-0 bg-blue-900/60 backdrop-blur-sm" @click="showModal = false"></div>
-                <div class="relative bg-white w-full max-w-lg rounded-[2rem] p-10 shadow-2xl">
-                    <h3 class="text-xl font-black text-blue-900 uppercase mb-6">{{ modalType === 'product' ? 'Produto' : 'Banner' }}</h3>
-                    <div class="space-y-4">
-                        <input v-model="form.name || form.title" placeholder="Nome/Título" class="w-full bg-gray-100 p-4 rounded-2xl font-bold border-none outline-none">
-                        <input v-if="modalType === 'product'" v-model="form.price" type="number" placeholder="Preço" class="w-full bg-gray-100 p-4 rounded-2xl font-bold border-none outline-none">
-                        <textarea v-if="modalType === 'product'" v-model="form.description" placeholder="Descrição" class="w-full bg-gray-100 p-4 rounded-2xl font-bold border-none outline-none h-24"></textarea>
-                        <input type="file" @change="handleImage" class="w-full text-[10px]">
-                        <button @click="saveData" class="w-full bg-blue-900 text-white py-4 rounded-2xl font-black uppercase text-xs">Salvar na Nuvem</button>
-                    </div>
-                </div>
-            </div>
-        </main>
+    <button @click="view='stock'" class="menu">Estoque</button>
+    <button @click="view='banners'" class="menu">Banners</button>
+    <button @click="view='users'" class="menu">Equipe</button>
+
+    <button @click="logout" class="mt-10 text-red-400">Sair</button>
+</aside>
+
+<!-- CONTEÚDO -->
+<main class="flex-1 p-8">
+
+<!-- ESTOQUE -->
+<section v-if="view==='stock'">
+    <div class="flex justify-between mb-4">
+        <h2 class="title">Estoque</h2>
+        <button @click="openProduct()" class="btn-green">+ Produto</button>
     </div>
 
-    <script>
-        const { createApp } = Vue;
-        // INSIRA SEUS DADOS DO SUPABASE AQUI
-        const SUPABASE_URL = 'SUA_URL_AQUI';
-        const SUPABASE_KEY = 'SUA_KEY_AQUI';
-        const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    <table class="w-full bg-white rounded">
+        <tr v-for="p in products" :key="p.id">
+            <td>{{ p.name }}</td>
+            <td>R$ {{ p.price }}</td>
+            <td>
+                <button @click="editProduct(p)">⚙</button>
+                <button @click="deleteProduct(p.id)">🗑</button>
+            </td>
+        </tr>
+    </table>
+</section>
 
-        createApp({
-            data() {
-                return {
-                    view: 'stock', loading: false, showModal: false, modalType: 'product',
-                    adminSession: JSON.parse(sessionStorage.getItem('dr_logged_admin')),
-                    products: [], banners: [], users: [],
-                    form: { id: null, name: '', title: '', price: 0, description: '', image: '' }
-                }
-            },
-            methods: {
-                async fetchData() {
-                    this.loading = true;
-                    const { data: p } = await _supabase.from('dr_products').select('*');
-                    const { data: b } = await _supabase.from('dr_banners').select('*');
-                    this.products = p || [];
-                    this.banners = b || [];
-                    this.loading = false;
-                },
-                openModal(type) {
-                    this.modalType = type;
-                    this.form = { id: null, name: '', title: '', price: 0, description: '', image: '' };
-                    this.showModal = true;
-                },
-                handleImage(e) {
-                    const reader = new FileReader();
-                    reader.onload = (res) => { this.form.image = res.target.result; };
-                    reader.readAsDataURL(e.target.files[0]);
-                },
-                async saveData() {
-                    this.loading = true;
-                    const table = this.modalType === 'product' ? 'dr_products' : 'dr_banners';
-                    if (this.form.id) {
-                        await _supabase.from(table).update(this.form).eq('id', this.form.id);
-                    } else {
-                        await _supabase.from(table).insert([this.form]);
-                    }
-                    this.showModal = false;
-                    this.fetchData();
-                },
-                async deleteItem(id, table) {
-                    if (confirm("Excluir?")) {
-                        await _supabase.from(table).delete().eq('id', id);
-                        this.fetchData();
-                    }
-                },
-                editItem(item, type) {
-                    this.modalType = type;
-                    this.form = { ...item };
-                    this.showModal = true;
-                },
-                logout() { sessionStorage.removeItem('dr_logged_admin'); window.location.href = 'index.html'; }
-            },
-            mounted() { 
-                if (!this.adminSession) window.location.href = 'index.html';
-                this.fetchData(); 
-                lucide.createIcons();
-            }
-        }).mount('#app');
-    </script>
+<!-- BANNERS -->
+<section v-if="view==='banners'">
+    <div class="flex justify-between mb-4">
+        <h2 class="title">Banners</h2>
+        <button @click="openBanner()" class="btn-blue">+ Banner</button>
+    </div>
+
+    <div class="grid grid-cols-3 gap-4">
+        <div v-for="b in banners" :key="b.id" class="bg-white p-2">
+            <img :src="b.image" class="h-20 w-full object-cover">
+            <button @click="deleteBanner(b.id)" class="text-red-500">Excluir</button>
+        </div>
+    </div>
+</section>
+
+<!-- MODAL -->
+<div v-if="modal" class="fixed inset-0 bg-black/60 flex items-center justify-center">
+    <div class="bg-white p-6 rounded w-96">
+        <h3 class="font-black mb-4">
+            {{ modalType === 'product' ? 'Produto' : 'Banner' }}
+        </h3>
+
+        <input v-if="modalType==='product'" v-model="form.name" placeholder="Nome" class="input">
+        <input v-if="modalType==='product'" v-model="form.price" placeholder="Preço" type="number" class="input">
+        <textarea v-if="modalType==='product'" v-model="form.description" placeholder="Descrição" class="input"></textarea>
+
+        <input v-if="modalType==='banner'" v-model="form.title" placeholder="Título" class="input">
+
+        <input type="file" @change="uploadImage">
+
+        <button @click="save()" class="btn-green w-full mt-4">Salvar</button>
+        <button @click="modal=false" class="w-full mt-2">Cancelar</button>
+    </div>
+</div>
+
+</main>
+</div>
+
+<script src="admin.js"></script>
 </body>
 </html>
